@@ -39,6 +39,8 @@ const asScore = (v: unknown): number => {
 
 const PLATFORM_VALUES = ['Google Maps', 'Instagram', 'Threads', 'Facebook', 'Job Boards'];
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const mapRow = (r: Record<string, unknown>): Lead =>
   ({
     ...r,
@@ -77,6 +79,7 @@ export async function POST(req: Request) {
     phone: asStr(contact.phone, 50),
     post_url: asStr(contact.post_url, 500),
     application_url: asStr(contact.application_url, 500),
+    website: asStr(contact.website, 500),
   };
 
   const recencyRaw = asStr(body.recency, 40) ?? new Date().toISOString();
@@ -167,27 +170,27 @@ export async function GET(req: Request) {
     if (statusParam === 'all' || !statusParam) {
       conditions.push("status <> 'hidden'");
     } else if (LEAD_STATUS_VALUES.includes(statusParam)) {
-      add('status = $?', statusParam);
+      add('status = ?', statusParam);
     }
     if (category && category !== 'All') {
-      add('category = $?', category);
+      add('category = ?', category);
     }
     if (remote === 'true') {
       add('remote_eligible_pak = true');
     }
     if (platform && platform !== 'All') {
-      add('platform = $?', platform);
+      add('platform = ?', platform);
     }
     if (days) {
       const n = parseInt(days, 10);
       if (Number.isFinite(n) && n > 0) {
-        add('recency >= now() - ($? || \' days\')::interval', String(n));
+        add('recency >= now() - (?::text || \' days\')::interval', String(n));
       }
     }
     if (search) {
       const q = search.trim().slice(0, 100);
       if (q) {
-        add('(business ILIKE $? OR need ILIKE $?)', `%${q}%`, `%${q}%`);
+        add('(business ILIKE ? OR need ILIKE ?)', `%${q}%`, `%${q}%`);
       }
     }
 
@@ -199,6 +202,26 @@ export async function GET(req: Request) {
     return NextResponse.json({ leads: leads.map(mapRow) });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Query failed';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  if (!requireAuthOrSecret(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const id = new URL(req.url).searchParams.get('id');
+  if (!id || !UUID_RE.test(id)) {
+    return NextResponse.json({ error: 'Valid id required' }, { status: 400 });
+  }
+
+  try {
+    await ensureLeadsTableOnce();
+    await query(`DELETE FROM leads WHERE id = $1::uuid`, [id]);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Delete failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

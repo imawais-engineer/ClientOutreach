@@ -5,6 +5,7 @@ export type LeadContact = {
   phone?: string | null;
   post_url?: string | null;
   application_url?: string | null;
+  website?: string | null;
 };
 
 export type LeadStatus = 'new' | 'contacted' | 'applied' | 'hidden';

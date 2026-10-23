@@ -6,12 +6,15 @@ export const dynamic = 'force-dynamic';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function DELETE(req: Request) {
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
   if (!requireAuthOrSecret(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const id = new URL(req.url).searchParams.get('id');
+  const id = params?.id || new URL(req.url).searchParams.get('id');
   if (!id || !UUID_RE.test(id)) {
     return NextResponse.json({ error: 'Valid id required' }, { status: 400 });
   }

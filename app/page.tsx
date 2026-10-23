@@ -182,6 +182,9 @@ function LeadCard({ lead, onDelete, onStatus }: { lead: Lead; onDelete: (id: str
         {lead.contact.profile_url && (
           <ContactButton href={lead.contact.profile_url} icon={<Send className="h-3 w-3" />} label="DM Profile" />
         )}
+        {lead.contact.website && (
+          <ContactButton href={lead.contact.website} icon={<Globe className="h-3 w-3" />} label="Website" />
+        )}
         {lead.contact.post_url && (
           <ContactButton href={lead.contact.post_url} icon={<FileText className="h-3 w-3" />} label="Post URL" />
         )}
