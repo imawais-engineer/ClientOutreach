@@ -3,7 +3,7 @@
 Password-protected lead dashboard for **Muhammad Awais — imawais.engineer (AI Automation Engineer)**.
 
 - Next.js 14 (App Router) + TypeScript + Tailwind CSS + shadcn/ui
-- Leads stored in Supabase (serverless-safe — works on Vercel out of the box)
+- Leads stored in Postgres via a single `CONNECTION_STRING` (works with Supabase or any Postgres)
 - Backend agent (Python/n8n) pushes leads via `POST /api/leads` with an API secret
 - Dark, minimal, mobile-friendly card grid UI
 
@@ -20,9 +20,7 @@ Password-protected lead dashboard for **Muhammad Awais — imawais.engineer (AI 
 | `SITE_EMAIL` | The login email for the dashboard |
 | `SITE_PASSWORD` | The login password for the dashboard (used together with `SITE_EMAIL`) |
 | `API_SECRET` | A long random string your backend sends as `x-api-secret` |
-| `SUPABASE_URL` | From your Supabase project settings |
-| `SUPABASE_ANON_KEY` | From your Supabase project settings |
-| `SUPABASE_SERVICE_ROLE_KEY` | From your Supabase project settings (server-side only) |
+| `CONNECTION_STRING` | Postgres connection string from Supabase → Project Settings → Database (use the **Transaction pooler** URI on Vercel; append `?sslmode=require` if not already present) |
 
 4. Click **Deploy**. First deploy works with no extra setup.
 
@@ -88,8 +86,8 @@ Duplicates are ignored: the same `business` + `post_url` combination returns `{"
 
 - All `/api` routes except `POST /api/leads` require the auth cookie or the `x-api-secret` header.
 - The dashboard email and password are compared server-side; the cookie is httpOnly and secure in production.
-- The service-role key is only used in API route handlers, never shipped to the browser.
-- If you ever rotate `API_SECRET`, redeploy so the new value takes effect.
+- The `CONNECTION_STRING` is only read by API route handlers, never shipped to the browser. All SQL is parameterized.
+- The leads table is created automatically on first API request if it doesn't exist (safe self-healing).
 
 ## Backend agent API reference (for your Python / n8n agent)
 
