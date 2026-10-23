@@ -7,6 +7,8 @@ export type LeadContact = {
   application_url?: string | null;
 };
 
+export type LeadStatus = 'new' | 'contacted' | 'applied' | 'hidden';
+
 export type Lead = {
   id: string;
   business: string;
@@ -20,6 +22,8 @@ export type Lead = {
   score: number;
   pitch_angle: string | null;
   case_study: string | null;
+  status: LeadStatus;
+  category: string;
   created_at: string;
   updated_at: string;
 };
@@ -36,6 +40,13 @@ export const PLATFORMS = [
 export type PlatformFilter = (typeof PLATFORMS)[number];
 
 export type RecencyFilter = 'all' | '3' | '7';
+
+export const STATUS_LABELS: Record<LeadStatus, string> = {
+  new: 'New',
+  contacted: 'Contacted',
+  applied: 'Applied',
+  hidden: 'Hidden',
+};
 
 export const OUTREACH_TEMPLATE = (lead: {
   need: string;

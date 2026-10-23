@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PLATFORMS, type Lead, type PlatformFilter, type RecencyFilter, OUTREACH_TEMPLATE } from '@/lib/leads';
+import { PLATFORMS, STATUS_LABELS, type Lead, type LeadStatus, type PlatformFilter, type RecencyFilter, OUTREACH_TEMPLATE } from '@/lib/leads';
 import {
   Search,
   RefreshCw,
@@ -30,6 +30,9 @@ import {
   FileText,
   Link2,
   Rocket,
+  EyeOff,
+  UserCheck,
+  ClipboardCheck,
 } from 'lucide-react';
 
 const PLATFORM_ICON: Record<string, React.ReactNode> = {
@@ -97,7 +100,7 @@ function ContactButton({
   );
 }
 
-function LeadCard({ lead, onDelete }: { lead: Lead; onDelete: (id: string) => void }) {
+function LeadCard({ lead, onDelete, onStatus }: { lead: Lead; onDelete: (id: string) => void; onStatus: (id: string, status: LeadStatus) => void }) {
   const [copied, setCopied] = useState<'template' | 'dm' | null>(null);
   const rec = recencyMeta(lead.recency);
 
@@ -118,7 +121,20 @@ function LeadCard({ lead, onDelete }: { lead: Lead; onDelete: (id: string) => vo
     <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 transition-colors hover:border-zinc-700">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="truncate text-base font-semibold text-zinc-50">{lead.business}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="truncate text-base font-semibold text-zinc-50">{lead.business}</h3>
+            {lead.status !== 'new' && (
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                  lead.status === 'contacted'
+                    ? 'bg-sky-500/15 text-sky-400'
+                    : 'bg-violet-500/15 text-violet-400'
+                }`}
+              >
+                {STATUS_LABELS[lead.status]}
+              </span>
+            )}
+          </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <Badge className="border-sky-500/30 bg-sky-500/15 text-sky-400 hover:bg-sky-500/15">{lead.need}</Badge>
             <Badge className={`${rec.cls} hover:${rec.cls}`}>{rec.label}</Badge>
@@ -189,13 +205,33 @@ function LeadCard({ lead, onDelete }: { lead: Lead; onDelete: (id: string) => vo
       </div>
 
       <div className="flex items-center justify-between border-t border-zinc-800 pt-3">
-        <button
-          onClick={() => copy(dmTemplate, 'template')}
-          className="truncate text-left text-xs text-zinc-500 hover:text-zinc-300"
-          title={dmTemplate}
-        >
-          {dmTemplate}
-        </button>
+        <div className="flex flex-wrap gap-1.5">
+          {lead.status !== 'contacted' && (
+            <button
+              onClick={() => onStatus(lead.id, 'contacted')}
+              className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-400 transition-colors hover:bg-sky-500/20"
+            >
+              <UserCheck className="h-3 w-3" />
+              Contacted
+            </button>
+          )}
+          {lead.status !== 'applied' && (
+            <button
+              onClick={() => onStatus(lead.id, 'applied')}
+              className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-400 transition-colors hover:bg-violet-500/20"
+            >
+              <ClipboardCheck className="h-3 w-3" />
+              Applied
+            </button>
+          )}
+          <button
+            onClick={() => onStatus(lead.id, 'hidden')}
+            className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+          >
+            <EyeOff className="h-3 w-3" />
+            Hide
+          </button>
+        </div>
         <Button
           size="sm"
           variant="ghost"
@@ -217,6 +253,9 @@ export default function Dashboard() {
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [recency, setRecency] = useState<RecencyFilter>('all');
   const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<'active' | LeadStatus>('active');
+  const [category, setCategory] = useState<string>('All');
+  const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const fetchLeads = useCallback(async () => {
@@ -228,6 +267,8 @@ export default function Dashboard() {
       if (remoteOnly) params.set('remote', 'true');
       if (recency !== 'all') params.set('days', recency);
       if (search.trim()) params.set('search', search.trim());
+      if (category !== 'All') params.set('category', category);
+      params.set('status', status === 'active' ? 'all' : status);
       const res = await fetch(`/api/leads?${params.toString()}`);
       if (!res.ok) throw new Error(`Failed to load leads (${res.status})`);
       const body = await res.json();
@@ -238,12 +279,27 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [platform, remoteOnly, recency, search]);
+  }, [platform, remoteOnly, recency, search, status, category]);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/leads/categories');
+      if (!res.ok) return;
+      const body = await res.json();
+      if (Array.isArray(body.categories)) setCategories(body.categories);
+    } catch {
+      /* non-critical */
+    }
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(fetchLeads, search ? 300 : 0);
     return () => clearTimeout(t);
   }, [fetchLeads, search]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories, leads.length]);
 
   const handleDelete = useCallback(async (id: string) => {
     setDeleting(id);
@@ -257,6 +313,23 @@ export default function Dashboard() {
       setDeleting(null);
     }
   }, []);
+
+  const handleStatus = useCallback(async (id: string, nextStatus: LeadStatus) => {
+    setLeads((prev) =>
+      nextStatus === 'hidden' ? prev.filter((l) => l.id !== id) : prev.map((l) => (l.id === id ? { ...l, status: nextStatus } : l))
+    );
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: nextStatus }),
+      });
+      if (!res.ok) throw new Error();
+      fetchCategories();
+    } catch {
+      fetchLeads();
+    }
+  }, [fetchLeads, fetchCategories]);
 
   const stats = useMemo(() => {
     const weekAgo = Date.now() - 7 * 86400000;
@@ -298,6 +371,28 @@ export default function Dashboard() {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {([
+            ['active', 'Active'],
+            ['new', 'New'],
+            ['contacted', 'Contacted'],
+            ['applied', 'Applied'],
+            ['hidden', 'Hidden'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              onClick={() => setStatus(value)}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                status === value
+                  ? 'bg-white text-zinc-950'
+                  : 'border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <StatCard label="Total Leads (7d)" value={stats.total} accent="text-white" />
           <StatCard label="Remote Eligible" value={stats.remote} accent="text-emerald-400" />
@@ -307,6 +402,21 @@ export default function Dashboard() {
         </div>
 
         <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 lg:flex-row lg:items-center">
+          <div className="flex flex-wrap gap-1.5">
+            {(['All', ...categories.map((c) => c.name)] as string[]).map((c) => (
+              <button
+                key={c}
+                onClick={() => setCategory(c)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  category === c
+                    ? 'bg-amber-500 text-zinc-950'
+                    : 'border border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {PLATFORMS.map((p) => (
               <button
@@ -385,11 +495,7 @@ export default function Dashboard() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {leads.map((lead) => (
-              <LeadCard
-                key={lead.id}
-                lead={lead}
-                onDelete={handleDelete}
-              />
+              <LeadCard key={lead.id} lead={lead} onDelete={handleDelete} onStatus={handleStatus} />
             ))}
           </div>
         )}

@@ -17,7 +17,11 @@ type LeadPayload = {
   score?: unknown;
   pitch_angle?: unknown;
   case_study?: unknown;
+  category?: unknown;
+  status?: unknown;
 };
+
+const LEAD_STATUS_VALUES = ['new', 'contacted', 'applied', 'hidden'];
 
 const asStr = (v: unknown, max = 2000): string | null => {
   if (typeof v !== 'string') return null;
@@ -73,6 +77,10 @@ export async function POST(req: Request) {
   const platformRaw = asStr(body.platform, 50) ?? 'Other';
   const platform = PLATFORM_VALUES.includes(platformRaw) ? platformRaw : platformRaw;
 
+  const category = asStr(body.category, 80) ?? 'Other';
+  const statusRaw = asStr(body.status, 20);
+  const status = (statusRaw && LEAD_STATUS_VALUES.includes(statusRaw) ? statusRaw : 'new') as Lead['status'];
+
   const validationPassed =
     body.validation_passed && typeof body.validation_passed === 'object' && !Array.isArray(body.validation_passed)
       ? Object.fromEntries(
@@ -94,6 +102,8 @@ export async function POST(req: Request) {
     score: asScore(body.score),
     pitch_angle: asStr(body.pitch_angle, 1000),
     case_study: asStr(body.case_study, 500),
+    category,
+    status,
   };
 
   try {
@@ -123,15 +133,25 @@ export async function GET(req: Request) {
   const remote = url.searchParams.get('remote');
   const days = url.searchParams.get('days');
   const search = url.searchParams.get('search');
+  const category = url.searchParams.get('category');
+  const statusParam = url.searchParams.get('status');
 
   const supabase = getSupabaseAdmin();
   let query = supabase.from('leads').select('*').order('recency', { ascending: false });
 
-  if (platform && platform !== 'All') {
-    query = query.eq('platform', platform);
+  if (statusParam === 'all' || !statusParam) {
+    query = query.neq('status', 'hidden');
+  } else if (LEAD_STATUS_VALUES.includes(statusParam)) {
+    query = query.eq('status', statusParam as Lead['status']);
+  }
+  if (category && category !== 'All') {
+    query = query.eq('category', category);
   }
   if (remote === 'true') {
     query = query.eq('remote_eligible_pak', true);
+  }
+  if (platform && platform !== 'All') {
+    query = query.eq('platform', platform);
   }
   if (days) {
     const n = parseInt(days, 10);
@@ -153,4 +173,31 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json({ leads: (data ?? []) as Lead[] });
+}
+
+export async function PATCH(req: Request) {
+  if (!requireAuthOrSecret(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const body = await req.json().catch(() => null);
+  const id = body && typeof body.id === 'string' ? body.id : null;
+  const status = body && typeof body.status === 'string' ? body.status : null;
+
+  if (!id || !status || !LEAD_STATUS_VALUES.includes(status)) {
+    return NextResponse.json(
+      { error: 'id and a valid status (new | contacted | applied | hidden) are required' },
+      { status: 400 }
+    );
+  }
+
+  const { error } = await getSupabaseAdmin()
+    .from('leads')
+    .update({ status: status as Lead['status'] })
+    .eq('id', id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, id, status });
 }

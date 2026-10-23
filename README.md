@@ -66,6 +66,8 @@ Response: `{"ok":true,"duplicate":false,"id":"..."}`
 | `score` | optional | 0–10 |
 | `pitch_angle` | optional | string |
 | `case_study` | optional | used in the copyable DM template |
+| `category` | optional | free-form grouping (e.g. `AI Automation`, `Chatbot`, `Job Application`); default `Other` |
+| `status` | optional | `new` (default), `contacted`, `applied`, or `hidden` |
 
 Duplicates are ignored: the same `business` + `post_url` combination returns `{"ok":true,"duplicate":true}` instead of creating a second row.
 
@@ -75,7 +77,9 @@ Duplicates are ignored: the same `business` + `post_url` combination returns `{"
 
 | Endpoint | Auth | Description |
 |---|---|---|
-| `GET /api/leads?platform=Instagram&remote=true&days=7&search=chatbot` | auth cookie or `x-api-secret` | Filtered leads, sorted by recency (newest first) |
+| `GET /api/leads?platform=Instagram&remote=true&days=7&search=chatbot&category=AI+Automation&status=new` | auth cookie or `x-api-secret` | Filtered leads, sorted by recency (newest first) |
+| `PATCH /api/leads` | auth cookie or `x-api-secret` | Update a lead's pipeline status: `{ "id": "<uuid>", "status": "contacted" \| "applied" \| "hidden" \| "new" }` |
+| `GET /api/leads/categories` | auth cookie or `x-api-secret` | Distinct categories with counts (hidden leads excluded) |
 | `DELETE /api/leads?id=<uuid>` | auth cookie or `x-api-secret` | Delete a lead |
 | `POST /api/login` | public | `{ "email": "...", "password": "..." }` → sets auth cookie |
 | `POST /api/logout` | public | Clears auth cookie |
@@ -86,3 +90,65 @@ Duplicates are ignored: the same `business` + `post_url` combination returns `{"
 - The dashboard email and password are compared server-side; the cookie is httpOnly and secure in production.
 - The service-role key is only used in API route handlers, never shipped to the browser.
 - If you ever rotate `API_SECRET`, redeploy so the new value takes effect.
+
+## Backend agent API reference (for your Python / n8n agent)
+
+Base URL: `https://your-vercel-url.vercel.app` - every agent request sends `x-api-secret: API_SECRET`.
+
+### 1. Push a lead
+`POST /api/leads`
+
+```json
+{
+  "business": "Needkingdom Community",
+  "need": "Chatbot for website",
+  "why_suits": "Website chatbot + lead engine - your core",
+  "contact": {
+    "profile_url": "https://www.threads.com/@needkingdom",
+    "dm_link": "https://www.threads.com/@needkingdom",
+    "email": null,
+    "phone": null,
+    "post_url": "https://www.threads.com/@needkingdom/post/example",
+    "application_url": null
+  },
+  "recency": "2026-10-21T00:00:00Z",
+  "platform": "Threads",
+  "remote_eligible_pak": true,
+  "validation_passed": { "remote": true, "recency": true, "relevance": true, "contact": true },
+  "score": 9,
+  "pitch_angle": "Lead capture bot on their landing page",
+  "case_study": "Real estate AI receptionist",
+  "category": "AI Automation"
+}
+```
+
+- `platform` should be one of: `Google Maps`, `Instagram`, `Threads`, `Facebook`, `Job Boards` (anything else is stored as-is under "Other").
+- `category` is free-form - use it to group jobs by industry or offer type.
+- Responses: `200 {"ok":true,"duplicate":false,"id":"..."}` | `200 {"ok":true,"duplicate":true,"id":null}` | `400` missing fields | `401` wrong secret | `500` server error.
+
+### 2. Pull / check leads (optional, e.g. for dedupe or sync)
+`GET /api/leads?status=new&days=7&category=AI%20Automation&search=chatbot`
+
+Query params (all optional, combine freely):
+- `platform` - exact match, e.g. `Instagram`
+- `category` - exact match, e.g. `AI Automation` (URL-encode spaces as `%20`)
+- `remote` - `true` = only `remote_eligible_pak`
+- `days` - only leads with `recency` within the last N days
+- `search` - matches `business` or `need` (case-insensitive contains)
+- `status` - `new` | `contacted` | `applied` | `hidden`, or omit for everything except hidden
+
+Response: `{"leads": [ { ...lead, "status": "new", "category": "AI Automation" } ]}` sorted newest first.
+
+### 3. Change a lead's status (same as the dashboard buttons)
+`PATCH /api/leads` with body `{"id": "<lead id>", "status": "contacted"}` - statuses: `new`, `contacted`, `applied`, `hidden`.
+
+### 4. List categories
+`GET /api/leads/categories` returns `[{"name":"AI Automation","count":12}, ...]` - useful if your agent wants to know which categories exist before pushing.
+
+### Status flow
+```
+new --(you DM / email)--> contacted --(you apply)--> applied
+ |                                                           
+ +--------(Hide button)--------> hidden (archived, out of the way)
+```
+Hidden leads are archived, never shown on the default dashboard, and excluded from category counts - this keeps room for new jobs at the top.
