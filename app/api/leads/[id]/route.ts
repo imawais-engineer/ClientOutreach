@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { query, ensureLeadsTableOnce } from '@/lib/db';
 import { requireAuthOrSecret } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -16,9 +16,12 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: 'Valid id required' }, { status: 400 });
   }
 
-  const { error } = await getSupabaseAdmin().from('leads').delete().eq('id', id);
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    await ensureLeadsTableOnce();
+    await query(`DELETE FROM leads WHERE id = $1::uuid`, [id]);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Delete failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-  return NextResponse.json({ ok: true });
 }

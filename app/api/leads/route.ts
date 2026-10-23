@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { query, ensureLeadsTableOnce } from '@/lib/db';
 import { checkApiSecret, requireAuthOrSecret } from '@/lib/auth';
 import type { Lead, LeadContact } from '@/lib/leads';
 
@@ -39,6 +39,15 @@ const asScore = (v: unknown): number => {
 
 const PLATFORM_VALUES = ['Google Maps', 'Instagram', 'Threads', 'Facebook', 'Job Boards'];
 
+const mapRow = (r: Record<string, unknown>): Lead =>
+  ({
+    ...r,
+    contact: (r.contact ?? {}) as LeadContact,
+    recency: new Date(r.recency as string).toISOString(),
+    created_at: new Date(r.created_at as string).toISOString(),
+    updated_at: new Date(r.updated_at as string).toISOString(),
+  }) as unknown as Lead;
+
 export async function POST(req: Request) {
   if (!checkApiSecret(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -74,9 +83,7 @@ export async function POST(req: Request) {
   const recency = new Date(recencyRaw);
   const recencyIso = isNaN(recency.getTime()) ? new Date().toISOString() : recency.toISOString();
 
-  const platformRaw = asStr(body.platform, 50) ?? 'Other';
-  const platform = PLATFORM_VALUES.includes(platformRaw) ? platformRaw : platformRaw;
-
+  const platform = asStr(body.platform, 50) ?? 'Other';
   const category = asStr(body.category, 80) ?? 'Other';
   const statusRaw = asStr(body.status, 20);
   const status = (statusRaw && LEAD_STATUS_VALUES.includes(statusRaw) ? statusRaw : 'new') as Lead['status'];
@@ -90,33 +97,43 @@ export async function POST(req: Request) {
         )
       : null;
 
-  const row = {
-    business,
-    need,
-    why_suits: asStr(body.why_suits, 1000),
-    contact: cleanContact,
-    recency: recencyIso,
-    platform,
-    remote_eligible_pak: asBool(body.remote_eligible_pak),
-    validation_passed: validationPassed,
-    score: asScore(body.score),
-    pitch_angle: asStr(body.pitch_angle, 1000),
-    case_study: asStr(body.case_study, 500),
-    category,
-    status,
-  };
-
   try {
-    const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
-      .from('leads')
-      .upsert(row, { onConflict: 'business,post_url', ignoreDuplicates: true })
-      .select('id')
-      .maybeSingle();
+    await ensureLeadsTableOnce();
 
-    if (error) throw new Error(error.message);
+    const existing = await query<{ id: string }>(
+      `SELECT id FROM leads WHERE business = $1 AND post_url IS NOT DISTINCT FROM $2 LIMIT 1`,
+      [business, cleanContact.post_url]
+    );
+    if (existing.length > 0) {
+      return NextResponse.json({ ok: true, duplicate: true, id: existing[0].id });
+    }
 
-    return NextResponse.json({ ok: true, duplicate: !data, id: data?.id ?? null });
+    const rows = await query<{ id: string }>(
+      `INSERT INTO leads (business, need, why_suits, contact, recency, platform, remote_eligible_pak, validation_passed, score, pitch_angle, case_study, category, status)
+       VALUES ($1,$2,$3,$4::jsonb,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13)
+       ON CONFLICT DO NOTHING
+       RETURNING id`,
+      [
+        business,
+        need,
+        asStr(body.why_suits, 1000),
+        JSON.stringify(cleanContact),
+        recencyIso,
+        platform,
+        asBool(body.remote_eligible_pak),
+        validationPassed ? JSON.stringify(validationPassed) : null,
+        asScore(body.score),
+        asStr(body.pitch_angle, 1000),
+        asStr(body.case_study, 500),
+        category,
+        status,
+      ]
+    );
+
+    if (rows.length === 0) {
+      return NextResponse.json({ ok: true, duplicate: true, id: null });
+    }
+    return NextResponse.json({ ok: true, duplicate: false, id: rows[0].id });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Insert failed';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -136,43 +153,54 @@ export async function GET(req: Request) {
   const category = url.searchParams.get('category');
   const statusParam = url.searchParams.get('status');
 
-  const supabase = getSupabaseAdmin();
-  let query = supabase.from('leads').select('*').order('recency', { ascending: false });
+  try {
+    await ensureLeadsTableOnce();
 
-  if (statusParam === 'all' || !statusParam) {
-    query = query.neq('status', 'hidden');
-  } else if (LEAD_STATUS_VALUES.includes(statusParam)) {
-    query = query.eq('status', statusParam as Lead['status']);
-  }
-  if (category && category !== 'All') {
-    query = query.eq('category', category);
-  }
-  if (remote === 'true') {
-    query = query.eq('remote_eligible_pak', true);
-  }
-  if (platform && platform !== 'All') {
-    query = query.eq('platform', platform);
-  }
-  if (days) {
-    const n = parseInt(days, 10);
-    if (Number.isFinite(n) && n > 0) {
-      const cutoff = new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
-      query = query.gte('recency', cutoff);
-      query = query.order('recency', { ascending: false });
-    }
-  }
-  if (search) {
-    const q = search.replace(/[%,()]/g, '').trim();
-    if (q) {
-      query = query.or(`business.ilike.%${q}%,need.ilike.%${q}%`);
-    }
-  }
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+    const add = (clause: string, ...vals: unknown[]) => {
+      for (const v of vals) values.push(v);
+      let idx = values.length - vals.length;
+      conditions.push(clause.replace(/\?/g, () => `$${++idx}`));
+    };
 
-  const { data, error } = await query;
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (statusParam === 'all' || !statusParam) {
+      conditions.push("status <> 'hidden'");
+    } else if (LEAD_STATUS_VALUES.includes(statusParam)) {
+      add('status = $?', statusParam);
+    }
+    if (category && category !== 'All') {
+      add('category = $?', category);
+    }
+    if (remote === 'true') {
+      add('remote_eligible_pak = true');
+    }
+    if (platform && platform !== 'All') {
+      add('platform = $?', platform);
+    }
+    if (days) {
+      const n = parseInt(days, 10);
+      if (Number.isFinite(n) && n > 0) {
+        add('recency >= now() - ($? || \' days\')::interval', String(n));
+      }
+    }
+    if (search) {
+      const q = search.trim().slice(0, 100);
+      if (q) {
+        add('(business ILIKE $? OR need ILIKE $?)', `%${q}%`, `%${q}%`);
+      }
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const leads = await query<Record<string, unknown>>(
+      `SELECT * FROM leads ${where} ORDER BY recency DESC, created_at DESC LIMIT 500`,
+      values
+    );
+    return NextResponse.json({ leads: leads.map(mapRow) });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Query failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-  return NextResponse.json({ leads: (data ?? []) as Lead[] });
 }
 
 export async function PATCH(req: Request) {
@@ -191,13 +219,15 @@ export async function PATCH(req: Request) {
     );
   }
 
-  const { error } = await getSupabaseAdmin()
-    .from('leads')
-    .update({ status: status as Lead['status'] })
-    .eq('id', id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    await ensureLeadsTableOnce();
+    await query(
+      `UPDATE leads SET status = $1, updated_at = now() WHERE id = $2::uuid`,
+      [status, id]
+    );
+    return NextResponse.json({ ok: true, id, status });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Update failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, id, status });
 }

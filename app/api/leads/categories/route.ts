@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase-admin';
+import { query, ensureLeadsTableOnce } from '@/lib/db';
 import { requireAuthOrSecret } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -9,23 +9,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data, error } = await getSupabaseAdmin()
-    .from('leads')
-    .select('category')
-    .neq('status', 'hidden');
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    await ensureLeadsTableOnce();
+    const rows = await query<{ category: string; count: string }>(
+      `SELECT category, count(*)::text AS count
+       FROM leads
+       WHERE status <> 'hidden'
+       GROUP BY category
+       ORDER BY count(*) DESC, category ASC`
+    );
+    const categories = rows.map((r) => ({
+      name: r.category || 'Other',
+      count: parseInt(r.count, 10),
+    }));
+    return NextResponse.json({ categories });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Query failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const counts = new Map<string, number>();
-  for (const row of data ?? []) {
-    const c = row.category || 'Other';
-    counts.set(c, (counts.get(c) ?? 0) + 1);
-  }
-  const categories = Array.from(counts.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-
-  return NextResponse.json({ categories });
 }
