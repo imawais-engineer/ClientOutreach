@@ -20,8 +20,8 @@ Password-protected lead dashboard for **Muhammad Awais — imawais.engineer (AI 
 | `SITE_EMAIL` | The login email for the dashboard |
 | `SITE_PASSWORD` | The login password for the dashboard (used together with `SITE_EMAIL`) |
 | `API_SECRET` | A long random string your backend sends as `x-api-secret` |
-| `NEXT_PUBLIC_SUPABASE_URL` | From your Supabase project settings |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | From your Supabase project settings |
+| `SUPABASE_URL` | From your Supabase project settings |
+| `SUPABASE_ANON_KEY` | From your Supabase project settings |
 | `SUPABASE_SERVICE_ROLE_KEY` | From your Supabase project settings (server-side only) |
 
 4. Click **Deploy**. First deploy works with no extra setup.
