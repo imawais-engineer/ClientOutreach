@@ -17,7 +17,8 @@ Password-protected lead dashboard for **Muhammad Awais — imawais.engineer (AI 
 
 | Name | Value |
 |---|---|
-| `SITE_PASSWORD` | The password you'll use to log into the dashboard |
+| `SITE_EMAIL` | The login email for the dashboard |
+| `SITE_PASSWORD` | The login password for the dashboard (used together with `SITE_EMAIL`) |
 | `API_SECRET` | A long random string your backend sends as `x-api-secret` |
 | `NEXT_PUBLIC_SUPABASE_URL` | From your Supabase project settings |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | From your Supabase project settings |
@@ -33,7 +34,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 — you'll be redirected to `/login`. Enter `SITE_PASSWORD` to sign in. A cookie (`auth=1`) keeps you signed in for 30 days; the Logout button clears it.
+Open http://localhost:3000 — you'll be redirected to `/login`. Enter the `SITE_EMAIL` and `SITE_PASSWORD` values to sign in. A cookie (`auth=1`) keeps you signed in for 30 days; the Logout button clears it.
 
 ---
 
@@ -76,12 +77,12 @@ Duplicates are ignored: the same `business` + `post_url` combination returns `{"
 |---|---|---|
 | `GET /api/leads?platform=Instagram&remote=true&days=7&search=chatbot` | auth cookie or `x-api-secret` | Filtered leads, sorted by recency (newest first) |
 | `DELETE /api/leads?id=<uuid>` | auth cookie or `x-api-secret` | Delete a lead |
-| `POST /api/login` | public | `{ "password": "..." }` → sets auth cookie |
+| `POST /api/login` | public | `{ "email": "...", "password": "..." }` → sets auth cookie |
 | `POST /api/logout` | public | Clears auth cookie |
 
 ## Security notes
 
 - All `/api` routes except `POST /api/leads` require the auth cookie or the `x-api-secret` header.
-- The dashboard password is compared server-side; the cookie is httpOnly and secure in production.
+- The dashboard email and password are compared server-side; the cookie is httpOnly and secure in production.
 - The service-role key is only used in API route handlers, never shipped to the browser.
 - If you ever rotate `API_SECRET`, redeploy so the new value takes effect.

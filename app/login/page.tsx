@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { Lock, Loader2 } from 'lucide-react';
+import { Lock, Loader2, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,7 +24,7 @@ function LoginForm() {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email, password }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -48,21 +49,34 @@ function LoginForm() {
         <p className="text-sm text-zinc-400">imawais.engineer - AI Automation Engineer</p>
       </div>
       <div className="space-y-2">
+        <Label htmlFor="email" className="text-zinc-300">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          autoFocus
+          autoComplete="email"
+          className="bg-zinc-900 border-zinc-800 text-zinc-100 placeholder:text-zinc-600"
+        />
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="password" className="text-zinc-300">Password</Label>
         <Input
           id="password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Enter dashboard password"
-          autoFocus
+          placeholder="Enter password"
+          autoComplete="current-password"
           className="bg-zinc-900 border-zinc-800 text-zinc-100 placeholder:text-zinc-600"
         />
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <Button
         type="submit"
-        disabled={loading || !password}
+        disabled={loading || !email || !password}
         className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-medium"
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sign in'}
