@@ -12,7 +12,7 @@ This clone lives at `/data/home/ClientOutreach-web`; it is separate from the Pyt
 ## Database
 
 The service currently points at **Supabase** (production data, PostgreSQL 17):
-`db.ptbhifhslqrfwqcwfehf.supabase.co:5432` via `CONNECTION_STRING` in `.env.local`.
+`db.<project-ref>.supabase.co:5432` via `CONNECTION_STRING` in `.env.local`.
 The direct 5432 host works from this VM; a Vercel/Netlify serverless deploy must use
 the **transaction pooler** on port 6543 instead, or connections will run out.
 
@@ -73,7 +73,7 @@ Vercel env vars are **sensitive** type (write-only, cannot be read back): `CONNE
 `CONNECTION_STRING` in Vercel is the **transaction pooler**, not the direct host:
 
 ```
-postgresql://postgres.ptbhifhslqrfwqcwfehf:<password>@aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres
+postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
 ```
 
 Changing an env var does not affect an existing deployment; push a commit or redeploy.
