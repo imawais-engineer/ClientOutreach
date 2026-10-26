@@ -1,24 +1,30 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PLATFORMS, STATUS_LABELS, type Lead, type LeadStatus, type PlatformFilter, type RecencyFilter, OUTREACH_TEMPLATE } from '@/lib/leads';
+import {
+  PLATFORMS,
+  STATUS_LABELS,
+  type Lead,
+  type LeadStatus,
+  type PlatformFilter,
+  type RecencyFilter,
+} from '@/lib/leads';
 import {
   Search,
   RefreshCw,
   LogOut,
-  Radio,
   Globe,
   Instagram,
   MessageSquare,
   Facebook,
   Briefcase,
   ExternalLink,
-  Mail,
-  Phone,
   Copy,
   Check,
   Trash2,
@@ -26,30 +32,47 @@ import {
   AlertTriangle,
   Layers,
   MapPin,
-  Send,
-  FileText,
-  Link2,
   Rocket,
   EyeOff,
   UserCheck,
-  ClipboardCheck,
+  Target,
+  Building2,
+  Users,
+  ChevronRight,
 } from 'lucide-react';
 
 const PLATFORM_ICON: Record<string, React.ReactNode> = {
   'Google Maps': <Globe className="h-3 w-3" />,
+  'Job Boards': <Briefcase className="h-3 w-3" />,
   Instagram: <Instagram className="h-3 w-3" />,
   Threads: <MessageSquare className="h-3 w-3" />,
   Facebook: <Facebook className="h-3 w-3" />,
-  'Job Boards': <Briefcase className="h-3 w-3" />,
+  LinkedIn: <Users className="h-3 w-3" />,
+  Directory: <Layers className="h-3 w-3" />,
+  'Freelance Platform': <Briefcase className="h-3 w-3" />,
+  Community: <Users className="h-3 w-3" />,
+  Referral: <Users className="h-3 w-3" />,
+  Partnership: <Building2 className="h-3 w-3" />,
+  'Startup Network': <Rocket className="h-3 w-3" />,
+  'Competitor Signal': <Target className="h-3 w-3" />,
+  'Agency Partner': <Building2 className="h-3 w-3" />,
   Other: <Layers className="h-3 w-3" />,
 };
 
-function recencyMeta(recency: string): { label: string; cls: string; days: number } {
+const STATUS_TABS = [
+  ['active', 'Active'],
+  ['qualified', 'Qualified'],
+  ['contacted', 'Contacted'],
+  ['replied', 'Replied'],
+  ['won', 'Won'],
+] as const;
+
+function recencyMeta(recency: string): { label: string; cls: string } {
   const ageDays = (Date.now() - new Date(recency).getTime()) / 86400000;
   const label = ageDays < 1 ? 'Today' : `${Math.max(1, Math.round(ageDays))}d ago`;
-  if (ageDays < 2) return { label, cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', days: ageDays };
-  if (ageDays < 7) return { label, cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30', days: ageDays };
-  return { label, cls: 'bg-red-500/15 text-red-400 border-red-500/30', days: ageDays };
+  if (ageDays < 2) return { label, cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' };
+  if (ageDays < 7) return { label, cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30' };
+  return { label, cls: 'bg-red-500/15 text-red-400 border-red-500/30' };
 }
 
 function StatCard({ label, value, accent }: { label: string; value: number | string; accent: string }) {
@@ -61,155 +84,102 @@ function StatCard({ label, value, accent }: { label: string; value: number | str
   );
 }
 
-function ContactButton({
-  href,
-  icon,
-  label,
-  onClick,
+function LeadCard({
+  lead,
+  onDelete,
+  onStatus,
+  onCopy,
+  copied,
 }: {
-  href?: string | null;
-  icon: React.ReactNode;
-  label: string;
-  onClick?: () => void;
+  lead: Lead;
+  onDelete: (id: string) => void;
+  onStatus: (id: string, status: LeadStatus) => void;
+  onCopy: (lead: Lead) => void;
+  copied: boolean;
 }) {
-  if (onClick) {
-    return (
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={onClick}
-        className="h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-200 hover:bg-zinc-800 hover:text-white"
-      >
-        {icon}
-        {label}
-      </Button>
-    );
-  }
-  if (!href) return null;
-  return (
-    <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer">
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-8 border-zinc-700 bg-zinc-900 text-xs text-zinc-200 hover:bg-zinc-800 hover:text-white"
-      >
-        {icon}
-        {label}
-      </Button>
-    </a>
-  );
-}
-
-function LeadCard({ lead, onDelete, onStatus }: { lead: Lead; onDelete: (id: string) => void; onStatus: (id: string, status: LeadStatus) => void }) {
-  const [copied, setCopied] = useState<'template' | 'dm' | null>(null);
+  const router = useRouter();
   const rec = recencyMeta(lead.recency);
-
-  const copy = useCallback(async (text: string, kind: 'template' | 'dm') => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(kind);
-      setTimeout(() => setCopied(null), 1500);
-    } catch {
-      /* clipboard unavailable */
-    }
-  }, []);
-
-  const dmTemplate = OUTREACH_TEMPLATE(lead);
-  const validations = lead.validation_passed ?? {};
+  const score = lead.weighted_score ?? null;
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 transition-colors hover:border-zinc-700">
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={() => router.push(`/leads/${lead.id}`)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') router.push(`/leads/${lead.id}`);
+      }}
+      className="flex cursor-pointer flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 transition-colors hover:border-zinc-600"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="truncate text-base font-semibold text-zinc-50">{lead.business}</h3>
-            {lead.status !== 'new' && (
-              <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                  lead.status === 'contacted'
-                    ? 'bg-sky-500/15 text-sky-400'
-                    : 'bg-violet-500/15 text-violet-400'
-                }`}
-              >
-                {STATUS_LABELS[lead.status]}
+            {lead.status !== 'discovered' && (
+              <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
+                {STATUS_LABELS[lead.status] ?? lead.status}
               </span>
             )}
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <Badge className="border-sky-500/30 bg-sky-500/15 text-sky-400 hover:bg-sky-500/15">{lead.need}</Badge>
-            <Badge className={`${rec.cls} hover:${rec.cls}`}>{rec.label}</Badge>
-            {PLATFORM_ICON[lead.platform] && (
+            <Badge className="border-sky-500/30 bg-sky-500/15 text-sky-400 hover:bg-sky-500/15">
+              {lead.category}
+            </Badge>
+            {lead.city && (
               <Badge className="border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-800">
-                {PLATFORM_ICON[lead.platform]}
-                <span className="ml-1">{lead.platform}</span>
-              </Badge>
-            )}
-            {lead.remote_eligible_pak && (
-              <Badge className="border-emerald-500/30 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/15">
                 <MapPin className="mr-1 h-3 w-3" />
-                Remote Pak
+                {lead.city}
               </Badge>
             )}
+            <Badge className={`${rec.cls} hover:${rec.cls}`}>{rec.label}</Badge>
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-center rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <span className="text-lg font-bold leading-none text-white tabular-nums">{lead.score}</span>
+          <span className="text-lg font-bold leading-none text-white tabular-nums">
+            {score ?? '–'}
+          </span>
           <span className="text-[10px] uppercase tracking-wide text-zinc-500">score</span>
         </div>
       </div>
 
-      {lead.why_suits && <p className="line-clamp-2 text-sm leading-relaxed text-zinc-400">{lead.why_suits}</p>}
+      <p className="line-clamp-2 text-sm leading-relaxed text-zinc-400">{lead.need}</p>
 
-      {Object.keys(validations).length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {Object.entries(validations).map(([k, v]) => (
-            <span
-              key={k}
-              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${
-                v
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                  : 'border-zinc-700 bg-zinc-900 text-zinc-500'
-              }`}
-            >
-              <Check className="h-3 w-3" />
-              {k}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-2">
-        {lead.contact.profile_url && (
-          <ContactButton href={lead.contact.profile_url} icon={<Send className="h-3 w-3" />} label="DM Profile" />
+      <div className="flex flex-wrap items-center gap-1.5">
+        {PLATFORM_ICON[lead.platform] && (
+          <Badge className="border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-800">
+            {PLATFORM_ICON[lead.platform]}
+            <span className="ml-1">{lead.platform}</span>
+          </Badge>
         )}
-        {lead.contact.website && (
-          <ContactButton href={lead.contact.website} icon={<Globe className="h-3 w-3" />} label="Website" />
+        {lead.classification === 'priority' && (
+          <Badge className="border-emerald-500/30 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/15">
+            Priority
+          </Badge>
         )}
-        {lead.contact.post_url && (
-          <ContactButton href={lead.contact.post_url} icon={<FileText className="h-3 w-3" />} label="Post URL" />
+        {lead.opt_out && (
+          <Badge className="border-red-500/30 bg-red-500/15 text-red-400 hover:bg-red-500/15">
+            Opted out
+          </Badge>
         )}
-        {lead.contact.dm_link && (
-          <ContactButton href={lead.contact.dm_link} icon={<Link2 className="h-3 w-3" />} label="DM Link" />
+        {lead.evidence_level && (
+          <Badge className="border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-900">
+            Evidence: {lead.evidence_level}
+          </Badge>
         )}
-        {lead.contact.email && (
-          <ContactButton href={`mailto:${lead.contact.email}`} icon={<Mail className="h-3 w-3" />} label="Email" />
-        )}
-        {lead.contact.phone && (
-          <ContactButton href={`tel:${lead.contact.phone}`} icon={<Phone className="h-3 w-3" />} label="Call" />
-        )}
-        {lead.contact.application_url && (
-          <ContactButton href={lead.contact.application_url} icon={<ExternalLink className="h-3 w-3" />} label="Apply" />
-        )}
-        <ContactButton
-          icon={copied === 'template' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-          label={copied === 'template' ? 'Copied' : 'Copy DM Template'}
-          onClick={() => copy(dmTemplate, 'template')}
-        />
       </div>
 
       <div className="flex items-center justify-between border-t border-zinc-800 pt-3">
-        <div className="flex flex-wrap gap-1.5">
-          {lead.status !== 'contacted' && (
+        <div className="flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
+          {lead.status !== 'qualified' && (
+            <button
+              onClick={() => onStatus(lead.id, 'qualified')}
+              className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-400 transition-colors hover:bg-emerald-500/20"
+            >
+              <Target className="h-3 w-3" />
+              Qualified
+            </button>
+          )}
+          {lead.status !== 'contacted' && !lead.opt_out && (
             <button
               onClick={() => onStatus(lead.id, 'contacted')}
               className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-400 transition-colors hover:bg-sky-500/20"
@@ -218,31 +188,34 @@ function LeadCard({ lead, onDelete, onStatus }: { lead: Lead; onDelete: (id: str
               Contacted
             </button>
           )}
-          {lead.status !== 'applied' && (
-            <button
-              onClick={() => onStatus(lead.id, 'applied')}
-              className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-400 transition-colors hover:bg-violet-500/20"
-            >
-              <ClipboardCheck className="h-3 w-3" />
-              Applied
-            </button>
-          )}
           <button
-            onClick={() => onStatus(lead.id, 'hidden')}
-            className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+            onClick={() => onCopy(lead)}
+            className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+          >
+            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            {copied ? 'Copied' : 'Copy angle'}
+          </button>
+          <button
+            onClick={() => onStatus(lead.id, 'do_not_contact')}
+            className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-800"
           >
             <EyeOff className="h-3 w-3" />
             Hide
           </button>
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => onDelete(lead.id)}
-          className="h-8 shrink-0 px-2 text-zinc-500 hover:bg-red-500/10 hover:text-red-400"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <Link href={`/leads/${lead.id}`} className="text-zinc-500 hover:text-zinc-200">
+            <ChevronRight className="h-4 w-4" />
+          </Link>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onDelete(lead.id)}
+            className="h-8 shrink-0 px-2 text-zinc-500 hover:bg-red-500/10 hover:text-red-400"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -256,10 +229,10 @@ export default function Dashboard() {
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [recency, setRecency] = useState<RecencyFilter>('all');
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<'active' | LeadStatus>('active');
+  const [status, setStatus] = useState<(typeof STATUS_TABS)[number][0]>('active');
   const [category, setCategory] = useState<string>('All');
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -305,52 +278,82 @@ export default function Dashboard() {
   }, [fetchCategories, leads.length]);
 
   const handleDelete = useCallback(async (id: string) => {
-    setDeleting(id);
+    setLeads((prev) => prev.filter((l) => l.id !== id));
     try {
       const res = await fetch(`/api/leads?id=${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Delete failed');
-      setLeads((prev) => prev.filter((l) => l.id !== id));
-    } catch {
-      /* refresh will show true state */
-    } finally {
-      setDeleting(null);
-    }
-  }, []);
-
-  const handleStatus = useCallback(async (id: string, nextStatus: LeadStatus) => {
-    setLeads((prev) =>
-      nextStatus === 'hidden' ? prev.filter((l) => l.id !== id) : prev.map((l) => (l.id === id ? { ...l, status: nextStatus } : l))
-    );
-    try {
-      const res = await fetch('/api/leads', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status: nextStatus }),
-      });
-      if (!res.ok) throw new Error();
-      fetchCategories();
     } catch {
       fetchLeads();
     }
-  }, [fetchLeads, fetchCategories]);
+  }, [fetchLeads]);
 
-  const stats = useMemo(() => {
-    const weekAgo = Date.now() - 7 * 86400000;
-    return {
-      total: leads.filter((l) => new Date(l.recency).getTime() >= weekAgo).length,
-      remote: leads.filter((l) => l.remote_eligible_pak).length,
-      maps: leads.filter((l) => l.platform === 'Google Maps').length,
-      social: leads.filter((l) => ['Instagram', 'Threads', 'Facebook'].includes(l.platform)).length,
-      jobs: leads.filter((l) => l.platform === 'Job Boards').length,
-    };
-  }, [leads]);
+  const patchLead = useCallback(
+    async (id: string, body: Record<string, unknown>) => {
+      try {
+        const res = await fetch('/api/leads', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, ...body }),
+        });
+        if (res.status === 409) {
+          const problem = await res.json().catch(() => ({}));
+          setError(problem.error ?? 'That status needs a contact date first');
+          return;
+        }
+        if (!res.ok) throw new Error();
+        fetchCategories();
+      } catch {
+        fetchLeads();
+      }
+    },
+    [fetchLeads, fetchCategories]
+  );
+
+  const handleStatus = useCallback(
+    async (id: string, nextStatus: LeadStatus) => {
+      if (nextStatus === 'do_not_contact') {
+        setLeads((prev) => prev.filter((l) => l.id !== id));
+        await patchLead(id, { status: nextStatus, hidden: true, opt_out: true });
+        return;
+      }
+      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status: nextStatus } : l)));
+      await patchLead(id, { status: nextStatus });
+    },
+    [patchLead]
+  );
+
+  const handleCopy = useCallback(async (lead: Lead) => {
+    const text = `${lead.pitch_angle ?? lead.why_suits ?? lead.need}${
+      lead.case_study ? `\n\nProof: ${lead.case_study}` : ''
+    }`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(lead.id);
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }, []);
+
+  const stats = useMemo(
+    () => ({
+      total: leads.length,
+      priority: leads.filter((l) => l.classification === 'priority').length,
+      qualified: leads.filter((l) => ['qualified', 'ready_for_outreach'].includes(l.status)).length,
+      contacted: leads.filter((l) =>
+        ['contacted', 'replied', 'discovery_discussion', 'proposal_or_pilot'].includes(l.status)
+      ).length,
+      won: leads.filter((l) => l.status === 'won').length,
+    }),
+    [leads]
+  );
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <header className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/25">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/25 bg-emerald-500/15">
               <Rocket className="h-4 w-4 text-emerald-400" />
             </div>
             <div>
@@ -375,13 +378,7 @@ export default function Dashboard() {
 
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
         <div className="flex flex-wrap items-center gap-1.5">
-          {([
-            ['active', 'Active'],
-            ['new', 'New'],
-            ['contacted', 'Contacted'],
-            ['applied', 'Applied'],
-            ['hidden', 'Hidden'],
-          ] as const).map(([value, label]) => (
+          {STATUS_TABS.map(([value, label]) => (
             <button
               key={value}
               onClick={() => setStatus(value)}
@@ -397,11 +394,11 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <StatCard label="Total Leads (7d)" value={stats.total} accent="text-white" />
-          <StatCard label="Remote Eligible" value={stats.remote} accent="text-emerald-400" />
-          <StatCard label="Maps" value={stats.maps} accent="text-sky-400" />
-          <StatCard label="Social" value={stats.social} accent="text-violet-400" />
-          <StatCard label="Job Boards" value={stats.jobs} accent="text-amber-400" />
+          <StatCard label="Leads" value={stats.total} accent="text-white" />
+          <StatCard label="Priority" value={stats.priority} accent="text-emerald-400" />
+          <StatCard label="Qualified" value={stats.qualified} accent="text-sky-400" />
+          <StatCard label="In conversation" value={stats.contacted} accent="text-violet-400" />
+          <StatCard label="Won" value={stats.won} accent="text-amber-400" />
         </div>
 
         <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 lg:flex-row lg:items-center">
@@ -440,11 +437,11 @@ export default function Dashboard() {
               onClick={() => setRemoteOnly(!remoteOnly)}
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                 remoteOnly
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                  ? 'border border-emerald-500/40 bg-emerald-500/20 text-emerald-400'
                   : 'border border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
               }`}
             >
-              Remote Only
+              Remote only
             </button>
             <div className="flex gap-1.5">
               {(['all', '3', '7'] as RecencyFilter[]).map((r) => (
@@ -466,7 +463,7 @@ export default function Dashboard() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search business or need..."
+                placeholder="Search business or opportunity..."
                 className="h-9 border-zinc-800 bg-zinc-950 pl-9 text-sm text-zinc-100 placeholder:text-zinc-600"
               />
             </div>
@@ -486,19 +483,28 @@ export default function Dashboard() {
         {loading && leads.length === 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-56 rounded-xl bg-zinc-900" />
+              <Skeleton key={i} className="h-48 rounded-xl bg-zinc-900" />
             ))}
           </div>
         ) : leads.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-zinc-800 py-16 text-center">
             <Inbox className="h-10 w-10 text-zinc-700" />
             <p className="text-sm font-medium text-zinc-400">No leads yet</p>
-            <p className="text-xs text-zinc-600">Waiting for backend agent POST to /api/leads</p>
+            <p className="text-xs text-zinc-600">
+              Run the pipeline, or POST a validated lead to /api/leads
+            </p>
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {leads.map((lead) => (
-              <LeadCard key={lead.id} lead={lead} onDelete={handleDelete} onStatus={handleStatus} />
+              <LeadCard
+                key={lead.id}
+                lead={lead}
+                onDelete={handleDelete}
+                onStatus={handleStatus}
+                onCopy={handleCopy}
+                copied={copiedId === lead.id}
+              />
             ))}
           </div>
         )}

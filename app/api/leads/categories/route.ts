@@ -14,7 +14,7 @@ export async function GET(req: Request) {
     const rows = await query<{ category: string; count: string }>(
       `SELECT category, count(*)::text AS count
        FROM leads
-       WHERE status <> 'hidden'
+       WHERE hidden = false
        GROUP BY category
        ORDER BY count(*) DESC, category ASC`
     );
