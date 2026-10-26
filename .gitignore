@@ -38,3 +38,16 @@ next-env.d.ts
 # local env backups (contain credentials)
 .env*.bak.*
 .env.local.bak*
+# --- Security hardening (secrets & local files) ---
+.env.*
+!.env.example
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.keystore.base64
+id_rsa*
+credentials*.json
+service-account*.json
+local.properties
