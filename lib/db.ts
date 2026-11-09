@@ -16,7 +16,20 @@ function buildConfig(): PoolConfig {
 }
 
 export function getPool(): Pool {
-  if (!pool) pool = new Pool(buildConfig());
+  if (!pool) {
+    pool = new Pool(buildConfig());
+    // Managed Postgres (e.g. Neon) hands out an empty search_path, which makes
+    // unqualified table names unresolvable and breaks CREATE TABLE outright.
+    // The pooler rejects `options=-c search_path=...`, so set it per connection.
+    pool.on('connect', (client) => {
+      client.query('SET search_path TO public').catch((err: unknown) => {
+        console.error(
+          '[db] failed to set search_path:',
+          err instanceof Error ? err.message : err
+        );
+      });
+    });
+  }
   return pool;
 }
 
