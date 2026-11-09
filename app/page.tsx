@@ -33,7 +33,8 @@ import {
   Layers,
   MapPin,
   Rocket,
-  EyeOff,
+  Archive,
+  ArchiveRestore,
   UserCheck,
   Target,
   Building2,
@@ -65,6 +66,7 @@ const STATUS_TABS = [
   ['contacted', 'Contacted'],
   ['replied', 'Replied'],
   ['won', 'Won'],
+  ['archived', 'Archived'],
 ] as const;
 
 function recencyMeta(recency: string): { label: string; cls: string } {
@@ -89,12 +91,14 @@ function LeadCard({
   onDelete,
   onStatus,
   onCopy,
+  onArchive,
   copied,
 }: {
   lead: Lead;
   onDelete: (id: string) => void;
   onStatus: (id: string, status: LeadStatus) => void;
   onCopy: (lead: Lead) => void;
+  onArchive: (id: string, restore: boolean) => void;
   copied: boolean;
 }) {
   const router = useRouter();
@@ -196,11 +200,11 @@ function LeadCard({
             {copied ? 'Copied' : 'Copy angle'}
           </button>
           <button
-            onClick={() => onStatus(lead.id, 'do_not_contact')}
+            onClick={() => onArchive(lead.id, lead.hidden)}
             className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-800"
           >
-            <EyeOff className="h-3 w-3" />
-            Hide
+            {lead.hidden ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
+            {lead.hidden ? 'Restore' : 'Archive'}
           </button>
         </div>
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -316,8 +320,22 @@ export default function Dashboard() {
         await patchLead(id, { status: nextStatus, hidden: true, opt_out: true });
         return;
       }
+      const target = leads.find((l) => l.id === id);
+      const body: Record<string, unknown> = { status: nextStatus };
+      // 'contacted' is refused without a contact date, so record it on transition.
+      if (nextStatus === 'contacted' && !target?.last_contact_at) {
+        body.last_contact_at = new Date().toISOString();
+      }
       setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status: nextStatus } : l)));
-      await patchLead(id, { status: nextStatus });
+      await patchLead(id, body);
+    },
+    [patchLead, leads]
+  );
+
+  const handleArchive = useCallback(
+    async (id: string, restore: boolean) => {
+      await patchLead(id, { hidden: !restore });
+      setLeads((prev) => prev.filter((l) => l.id !== id));
     },
     [patchLead]
   );
@@ -340,8 +358,9 @@ export default function Dashboard() {
       total: leads.length,
       priority: leads.filter((l) => l.classification === 'priority').length,
       qualified: leads.filter((l) => ['qualified', 'ready_for_outreach'].includes(l.status)).length,
-      contacted: leads.filter((l) =>
-        ['contacted', 'replied', 'discovery_discussion', 'proposal_or_pilot'].includes(l.status)
+      contacted: leads.filter((l) => l.status === 'contacted').length,
+      replied: leads.filter((l) =>
+        ['replied', 'discovery_discussion', 'proposal_or_pilot'].includes(l.status)
       ).length,
       won: leads.filter((l) => l.status === 'won').length,
     }),
@@ -393,11 +412,12 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <StatCard label="Leads" value={stats.total} accent="text-white" />
           <StatCard label="Priority" value={stats.priority} accent="text-emerald-400" />
           <StatCard label="Qualified" value={stats.qualified} accent="text-sky-400" />
-          <StatCard label="In conversation" value={stats.contacted} accent="text-violet-400" />
+          <StatCard label="Contacted" value={stats.contacted} accent="text-cyan-400" />
+          <StatCard label="Replied" value={stats.replied} accent="text-violet-400" />
           <StatCard label="Won" value={stats.won} accent="text-amber-400" />
         </div>
 
@@ -503,6 +523,7 @@ export default function Dashboard() {
                 onDelete={handleDelete}
                 onStatus={handleStatus}
                 onCopy={handleCopy}
+                onArchive={handleArchive}
                 copied={copiedId === lead.id}
               />
             ))}

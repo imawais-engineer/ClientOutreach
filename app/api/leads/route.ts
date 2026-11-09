@@ -315,7 +315,9 @@ export async function GET(req: Request) {
   try {
     await ensureLeadsTableOnce();
 
-    const conditions: string[] = ['hidden = false'];
+    // 'archived' is a view of hidden rows, not a lifecycle status.
+    const archivedView = statusParam === 'archived';
+    const conditions: string[] = [archivedView ? 'hidden = true' : 'hidden = false'];
     const values: unknown[] = [];
     const add = (clause: string, ...vals: unknown[]) => {
       for (const v of vals) values.push(v);
@@ -323,7 +325,7 @@ export async function GET(req: Request) {
       conditions.push(clause.replace(/\?/g, () => `$${++idx}`));
     };
 
-    if (statusParam && statusParam !== 'all') {
+    if (statusParam && statusParam !== 'all' && !archivedView) {
       if (!LEAD_STATUS_VALUES.includes(statusParam)) {
         return NextResponse.json({ error: 'invalid status filter' }, { status: 400 });
       }
