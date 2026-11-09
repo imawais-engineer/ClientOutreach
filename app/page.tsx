@@ -10,6 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   PLATFORMS,
   STATUS_LABELS,
+  composeMessage,
+  whatsappLink,
   type Lead,
   type LeadStatus,
   type PlatformFilter,
@@ -35,6 +37,7 @@ import {
   Rocket,
   Archive,
   ArchiveRestore,
+  MessageCircle,
   UserCheck,
   Target,
   Building2,
@@ -104,6 +107,7 @@ function LeadCard({
   const router = useRouter();
   const rec = recencyMeta(lead.recency);
   const score = lead.weighted_score ?? null;
+  const whatsapp = whatsappLink(lead.contact?.phone, lead.country, composeMessage(lead));
 
   return (
     <div
@@ -199,6 +203,18 @@ function LeadCard({
             {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
             {copied ? 'Copied' : 'Copy angle'}
           </button>
+          {whatsapp && (
+            <a
+              href={whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`WhatsApp ${lead.contact.phone}`}
+              className="inline-flex items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-[11px] font-medium text-green-400 transition-colors hover:bg-green-500/20"
+            >
+              <MessageCircle className="h-3 w-3" />
+              WhatsApp
+            </a>
+          )}
           <button
             onClick={() => onArchive(lead.id, lead.hidden)}
             className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-800"
@@ -341,9 +357,7 @@ export default function Dashboard() {
   );
 
   const handleCopy = useCallback(async (lead: Lead) => {
-    const text = `${lead.pitch_angle ?? lead.why_suits ?? lead.need}${
-      lead.case_study ? `\n\nProof: ${lead.case_study}` : ''
-    }`;
+    const text = composeMessage(lead);
     try {
       await navigator.clipboard.writeText(text);
       setCopiedId(lead.id);
@@ -486,6 +500,21 @@ export default function Dashboard() {
                 placeholder="Search business or opportunity..."
                 className="h-9 border-zinc-800 bg-zinc-950 pl-9 text-sm text-zinc-100 placeholder:text-zinc-600"
               />
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                Export
+              </span>
+              {(['csv', 'json', 'md'] as const).map((f) => (
+                <a
+                  key={f}
+                  href={`/api/leads/export?format=${f}&status=${status}`}
+                  title={`Download every ${status === 'archived' ? 'archived ' : ''}lead as ${f.toUpperCase()}`}
+                  className="rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
+                >
+                  {f.toUpperCase()}
+                </a>
+              ))}
             </div>
             <Button size="sm" variant="ghost" onClick={fetchLeads} className="text-zinc-400 hover:text-white">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />

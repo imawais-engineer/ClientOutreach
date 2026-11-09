@@ -3,13 +3,20 @@ import { notFound, redirect } from 'next/navigation';
 import { query, ensureLeadsTableOnce } from '@/lib/db';
 import { isAuthed } from '@/lib/auth';
 import { LeadActions } from '@/components/lead-actions';
-import { STATUS_LABELS, type Lead, type LeadDetails } from '@/lib/leads';
+import {
+  STATUS_LABELS,
+  composeMessage,
+  whatsappLink,
+  type Lead,
+  type LeadDetails,
+} from '@/lib/leads';
 import {
   ArrowLeft,
   ExternalLink,
   Globe,
   Mail,
   Phone,
+  MessageCircle,
   FileText,
   MapPin,
   ShieldAlert,
@@ -89,6 +96,7 @@ export default async function LeadDetail({ params }: { params: { id: string } })
   const scores = d.scores ?? {};
   const evidence = d.evidence ?? [];
   const contacts = d.contacts ?? [];
+  const whatsapp = whatsappLink(lead.contact?.phone, lead.country, composeMessage(lead));
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -329,6 +337,17 @@ export default async function LeadDetail({ params }: { params: { id: string } })
                   <a href={`tel:${lead.contact.phone}`} className="inline-flex items-center gap-1 text-sky-400">
                     <Phone className="h-3.5 w-3.5" />
                     Call
+                  </a>
+                )}
+                {whatsapp && (
+                  <a
+                    href={whatsapp}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-green-400"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    WhatsApp
                   </a>
                 )}
                 {lead.contact.profile_url && (

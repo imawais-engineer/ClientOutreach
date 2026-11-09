@@ -151,3 +151,90 @@ export const OUTREACH_TEMPLATE = (lead: {
   `Hey, saw you need ${lead.need} - I built ${
     lead.case_study || 'a similar automation'
   } - 90 sec Loom for you? - imawais.engineer/projects`;
+
+/** The one paragraph used for copy-to-clipboard and as the WhatsApp prefill. */
+export const composeMessage = (lead: {
+  need: string;
+  pitch_angle?: string | null;
+  why_suits?: string | null;
+  case_study?: string | null;
+}): string => {
+  const opening = lead.pitch_angle ?? lead.why_suits ?? lead.need;
+  return lead.case_study ? `${opening}\n\nProof: ${lead.case_study}` : opening;
+};
+
+// Dial codes cover the markets the pipeline targets. Only used to turn a
+// locally-formatted number into something wa.me will accept.
+const DIAL_CODES: Record<string, string> = {
+  US: '1',
+  CA: '1',
+  GB: '44',
+  AU: '61',
+  NZ: '64',
+  IE: '353',
+  PK: '92',
+  IN: '91',
+  BD: '880',
+  LK: '94',
+  AE: '971',
+  SA: '966',
+  QA: '974',
+  DE: '49',
+  FR: '33',
+  NL: '31',
+  ES: '34',
+  IT: '39',
+  PT: '351',
+  SG: '65',
+  MY: '60',
+  ID: '62',
+  PH: '63',
+  TH: '66',
+  VN: '84',
+  ZA: '27',
+  NG: '234',
+  KE: '254',
+  EG: '20',
+  BR: '55',
+  MX: '52',
+  TR: '90',
+};
+
+/**
+ * Digits-only international number for wa.me, or null when the scraped phone
+ * cannot be made dialable. Scraped numbers are often local format (`0300…`,
+ * `(415) 555-0132`), which wa.me rejects, so the lead's country supplies the
+ * dial code when the number does not already carry one.
+ */
+export const whatsappNumber = (
+  phone?: string | null,
+  country?: string | null
+): string | null => {
+  if (!phone) return null;
+  let digits = phone.replace(/[^\d+]/g, '').replace(/\+/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  digits = digits.replace(/\D/g, '');
+  if (!digits) return null;
+
+  const dial = country ? DIAL_CODES[country.trim().toUpperCase()] : undefined;
+  if (dial && digits.startsWith('0')) {
+    digits = dial + digits.replace(/^0+/, '');
+  } else if (dial && digits.length <= 10) {
+    digits = dial + digits;
+  }
+
+  if (digits.length < 7 || digits.length > 15) return null;
+  return digits;
+};
+
+/** `https://wa.me/<number>?text=…`, or null when there is no usable number. */
+export const whatsappLink = (
+  phone?: string | null,
+  country?: string | null,
+  text?: string | null
+): string | null => {
+  const number = whatsappNumber(phone, country);
+  if (!number) return null;
+  const base = `https://wa.me/${number}`;
+  return text ? `${base}?text=${encodeURIComponent(text)}` : base;
+};
