@@ -13,7 +13,15 @@ import {
   type Lead,
   type StatusGroup,
 } from '@/lib/leads';
-import { Search, Download, Inbox, ArrowRight, X } from 'lucide-react';
+import { Search, Download, Inbox, ArrowRight, X, Mail, MessageCircle } from 'lucide-react';
+
+type Channel = 'all' | 'email' | 'whatsapp';
+
+const CHANNELS: Array<{ key: Channel; label: string; icon: React.ElementType | null }> = [
+  { key: 'all', label: 'All channels', icon: null },
+  { key: 'email', label: 'Email ready', icon: Mail },
+  { key: 'whatsapp', label: 'WhatsApp ready', icon: MessageCircle },
+];
 
 const VIEWS: StatusGroup[] = ['active', 'qualified', 'contacted', 'replied', 'won', 'archived'];
 
@@ -96,6 +104,7 @@ function LeadsView() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
+  const [channel, setChannel] = useState<Channel>('all');
 
   useEffect(() => {
     const t = setTimeout(() => setQuery(search.trim()), 300);
@@ -108,6 +117,7 @@ function LeadsView() {
     try {
       const qs = new URLSearchParams({ group: view, limit: '200' });
       if (query) qs.set('search', query);
+      if (channel !== 'all') qs.set('channel', channel);
       const res = await fetch(`/api/leads?${qs.toString()}`);
       if (!res.ok) throw new Error(`Failed to load leads (${res.status})`);
       const body = await res.json();
@@ -118,7 +128,7 @@ function LeadsView() {
     } finally {
       setLoading(false);
     }
-  }, [view, query]);
+  }, [view, query, channel]);
 
   useEffect(() => {
     load();
@@ -193,6 +203,23 @@ function LeadsView() {
             </div>
           </details>
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-1.5">
+        {CHANNELS.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setChannel(key)}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+              channel === key
+                ? 'border-zinc-600 bg-zinc-800 font-medium text-zinc-100'
+                : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+            }`}
+          >
+            {Icon && <Icon className="h-3.5 w-3.5" />}
+            {label}
+          </button>
+        ))}
       </div>
 
       {error && (

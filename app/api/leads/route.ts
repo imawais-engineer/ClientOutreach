@@ -4,6 +4,7 @@ import { checkApiSecret, requireAuthOrSecret } from '@/lib/auth';
 import {
   LIFECYCLE,
   STATUS_GROUPS,
+  whatsappNumber,
   type Lead,
   type LeadContact,
   type LeadDetails,
@@ -317,6 +318,7 @@ export async function GET(req: Request) {
   const category = url.searchParams.get('category');
   const statusParam = url.searchParams.get('status');
   const groupParam = url.searchParams.get('group');
+  const channel = url.searchParams.get('channel');
   const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get('limit') ?? '60', 10) || 60));
   const offset = Math.max(0, parseInt(url.searchParams.get('offset') ?? '0', 10) || 0);
 
@@ -360,30 +362,52 @@ export async function GET(req: Request) {
       const q = search.trim().slice(0, 100);
       if (q) add('(business ILIKE ? OR need ILIKE ?)', `%${q}%`, `%${q}%`);
     }
+    // Channel readiness. Email is a stored field; WhatsApp additionally needs a
+    // number that can be normalised into something wa.me accepts, so those rows
+    // are narrowed in JS below using the same helper the UI uses.
+    const wantsWhatsApp = channel === 'whatsapp';
+    if (channel === 'email') {
+      conditions.push("NULLIF(contact->>'email', '') IS NOT NULL");
+    } else if (wantsWhatsApp) {
+      conditions.push("NULLIF(contact->>'phone', '') IS NOT NULL");
+    } else if (channel && channel !== 'all') {
+      return NextResponse.json({ error: 'invalid channel filter' }, { status: 400 });
+    }
 
     const where = `WHERE ${conditions.join(' AND ')}`;
-    const leads = await query<Record<string, unknown>>(
+    const rows = await query<Record<string, unknown>>(
       `SELECT ${CARD_COLUMNS} FROM leads ${where}
        ORDER BY weighted_score DESC NULLS LAST, recency DESC, created_at DESC
-       LIMIT ${limit} OFFSET ${offset}`,
+       LIMIT ${wantsWhatsApp ? 2000 : limit} OFFSET ${wantsWhatsApp ? 0 : offset}`,
       values
     );
+
+    const leads = wantsWhatsApp
+      ? rows.filter((r) =>
+          whatsappNumber(
+            (r.contact as LeadContact | null)?.phone,
+            typeof r.country === 'string' ? r.country : null
+          )
+        )
+      : rows;
+    const page = wantsWhatsApp ? leads.slice(offset, offset + limit) : leads;
 
     const [{ count }] = await query<{ count: string }>(
       `SELECT count(*)::text AS count FROM leads ${where}`,
       values
     );
+    const total = wantsWhatsApp ? leads.length : parseInt(count, 10);
 
     return NextResponse.json({
-      leads: leads.map((r) => ({
+      leads: page.map((r) => ({
         ...r,
         contact: (r.contact ?? {}) as LeadContact,
         recency: new Date(r.recency as string).toISOString(),
         created_at: new Date(r.created_at as string).toISOString(),
         updated_at: new Date(r.updated_at as string).toISOString(),
       })),
-      total: parseInt(count, 10),
-      next_offset: offset + leads.length < parseInt(count, 10) ? offset + leads.length : null,
+      total,
+      next_offset: offset + page.length < total ? offset + page.length : null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Query failed';
