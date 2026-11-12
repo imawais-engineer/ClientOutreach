@@ -1,271 +1,114 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { AppShell } from '@/components/app-shell';
 import {
-  PLATFORMS,
+  GROUP_LABELS,
   STATUS_LABELS,
-  composeMessage,
-  whatsappLink,
+  businessDescription,
+  shortBusiness,
   type Lead,
-  type LeadStatus,
-  type PlatformFilter,
-  type RecencyFilter,
+  type StatusGroup,
 } from '@/lib/leads';
-import {
-  Search,
-  RefreshCw,
-  LogOut,
-  Globe,
-  Instagram,
-  MessageSquare,
-  Facebook,
-  Briefcase,
-  ExternalLink,
-  Copy,
-  Check,
-  Trash2,
-  Inbox,
-  AlertTriangle,
-  Layers,
-  MapPin,
-  Rocket,
-  Archive,
-  ArchiveRestore,
-  MessageCircle,
-  UserCheck,
-  Target,
-  Building2,
-  Users,
-  ChevronRight,
-} from 'lucide-react';
+import { Search, Download, Inbox, ArrowRight, X } from 'lucide-react';
 
-const PLATFORM_ICON: Record<string, React.ReactNode> = {
-  'Google Maps': <Globe className="h-3 w-3" />,
-  'Job Boards': <Briefcase className="h-3 w-3" />,
-  Instagram: <Instagram className="h-3 w-3" />,
-  Threads: <MessageSquare className="h-3 w-3" />,
-  Facebook: <Facebook className="h-3 w-3" />,
-  LinkedIn: <Users className="h-3 w-3" />,
-  Directory: <Layers className="h-3 w-3" />,
-  'Freelance Platform': <Briefcase className="h-3 w-3" />,
-  Community: <Users className="h-3 w-3" />,
-  Referral: <Users className="h-3 w-3" />,
-  Partnership: <Building2 className="h-3 w-3" />,
-  'Startup Network': <Rocket className="h-3 w-3" />,
-  'Competitor Signal': <Target className="h-3 w-3" />,
-  'Agency Partner': <Building2 className="h-3 w-3" />,
-  Other: <Layers className="h-3 w-3" />,
+const VIEWS: StatusGroup[] = ['active', 'qualified', 'contacted', 'replied', 'won', 'archived'];
+
+const asView = (value: string | null): StatusGroup =>
+  value && (VIEWS as string[]).includes(value) ? (value as StatusGroup) : 'active';
+
+const PRIORITY: Record<string, { label: string; dot: string; text: string }> = {
+  priority: { label: 'Priority', dot: 'bg-emerald-400', text: 'text-emerald-400' },
+  potential: { label: 'Potential', dot: 'bg-zinc-500', text: 'text-zinc-400' },
+  deprioritize: { label: 'Low priority', dot: 'bg-zinc-600', text: 'text-zinc-500' },
 };
-
-const STATUS_TABS = [
-  ['active', 'Active'],
-  ['qualified', 'Qualified'],
-  ['contacted', 'Contacted'],
-  ['replied', 'Replied'],
-  ['won', 'Won'],
-  ['archived', 'Archived'],
-] as const;
-
-function recencyMeta(recency: string): { label: string; cls: string } {
-  const ageDays = (Date.now() - new Date(recency).getTime()) / 86400000;
-  const label = ageDays < 1 ? 'Today' : `${Math.max(1, Math.round(ageDays))}d ago`;
-  if (ageDays < 2) return { label, cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' };
-  if (ageDays < 7) return { label, cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30' };
-  return { label, cls: 'bg-red-500/15 text-red-400 border-red-500/30' };
-}
-
-function StatCard({ label, value, accent }: { label: string; value: number | string; accent: string }) {
-  return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
-      <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold tabular-nums ${accent}`}>{value}</p>
-    </div>
-  );
-}
 
 function LeadCard({
   lead,
-  onDelete,
-  onStatus,
-  onCopy,
-  onArchive,
-  copied,
+  archived,
+  onHide,
 }: {
   lead: Lead;
-  onDelete: (id: string) => void;
-  onStatus: (id: string, status: LeadStatus) => void;
-  onCopy: (lead: Lead) => void;
-  onArchive: (id: string, restore: boolean) => void;
-  copied: boolean;
+  archived: boolean;
+  onHide: (id: string, restore: boolean) => void;
 }) {
-  const router = useRouter();
-  const rec = recencyMeta(lead.recency);
-  const score = lead.weighted_score ?? null;
-  const whatsapp = whatsappLink(lead.contact?.phone, lead.country, composeMessage(lead));
+  const priority = PRIORITY[lead.classification ?? ''] ?? null;
+  const place = [lead.city, lead.country].filter(Boolean).join(', ') || 'Location unknown';
 
   return (
-    <div
-      role="link"
-      tabIndex={0}
-      onClick={() => router.push(`/leads/${lead.id}`)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') router.push(`/leads/${lead.id}`);
-      }}
-      className="flex cursor-pointer flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 transition-colors hover:border-zinc-600"
-    >
-      <div className="flex items-start justify-between gap-2">
+    <article className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 transition-colors hover:border-zinc-700">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate text-base font-semibold text-zinc-50">{lead.business}</h3>
-            {lead.status !== 'discovered' && (
-              <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
-                {STATUS_LABELS[lead.status] ?? lead.status}
-              </span>
-            )}
-          </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <Badge className="border-sky-500/30 bg-sky-500/15 text-sky-400 hover:bg-sky-500/15">
-              {lead.category}
-            </Badge>
-            {lead.city && (
-              <Badge className="border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-800">
-                <MapPin className="mr-1 h-3 w-3" />
-                {lead.city}
-              </Badge>
-            )}
-            <Badge className={`${rec.cls} hover:${rec.cls}`}>{rec.label}</Badge>
-          </div>
+          <h3 className="truncate text-base font-semibold text-zinc-50">
+            {shortBusiness(lead.business, 70)}
+          </h3>
+          <p className="mt-1 truncate text-xs text-zinc-500">
+            {place} · {lead.category}
+          </p>
         </div>
-        <div className="flex shrink-0 flex-col items-center rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <span className="text-lg font-bold leading-none text-white tabular-nums">
-            {score ?? '–'}
+        {priority && (
+          <span className={`inline-flex shrink-0 items-center gap-1.5 text-[11px] ${priority.text}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${priority.dot}`} />
+            {priority.label}
           </span>
-          <span className="text-[10px] uppercase tracking-wide text-zinc-500">score</span>
-        </div>
-      </div>
-
-      <p className="line-clamp-2 text-sm leading-relaxed text-zinc-400">{lead.need}</p>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        {PLATFORM_ICON[lead.platform] && (
-          <Badge className="border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-800">
-            {PLATFORM_ICON[lead.platform]}
-            <span className="ml-1">{lead.platform}</span>
-          </Badge>
-        )}
-        {lead.classification === 'priority' && (
-          <Badge className="border-emerald-500/30 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/15">
-            Priority
-          </Badge>
-        )}
-        {lead.opt_out && (
-          <Badge className="border-red-500/30 bg-red-500/15 text-red-400 hover:bg-red-500/15">
-            Opted out
-          </Badge>
-        )}
-        {lead.evidence_level && (
-          <Badge className="border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-900">
-            Evidence: {lead.evidence_level}
-          </Badge>
         )}
       </div>
 
-      <div className="flex items-center justify-between border-t border-zinc-800 pt-3">
-        <div className="flex flex-wrap gap-1.5" onClick={(e) => e.stopPropagation()}>
-          {lead.status !== 'qualified' && (
-            <button
-              onClick={() => onStatus(lead.id, 'qualified')}
-              className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-400 transition-colors hover:bg-emerald-500/20"
-            >
-              <Target className="h-3 w-3" />
-              Qualified
-            </button>
-          )}
-          {lead.status !== 'contacted' && !lead.opt_out && (
-            <button
-              onClick={() => onStatus(lead.id, 'contacted')}
-              className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-400 transition-colors hover:bg-sky-500/20"
-            >
-              <UserCheck className="h-3 w-3" />
-              Contacted
-            </button>
-          )}
+      <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-zinc-400">
+        {businessDescription(lead)}
+      </p>
+
+      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-zinc-300">
+        <span className="text-zinc-500">Opportunity: </span>
+        {lead.need}
+      </p>
+
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-800/70 pt-3">
+        <span className="text-xs text-zinc-500">{STATUS_LABELS[lead.status] ?? lead.status}</span>
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => onCopy(lead)}
-            className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition-colors hover:bg-zinc-800"
+            onClick={() => onHide(lead.id, archived)}
+            className="rounded-md px-2.5 py-1.5 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
           >
-            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-            {copied ? 'Copied' : 'Copy angle'}
+            {archived ? 'Restore' : 'Hide'}
           </button>
-          {whatsapp && (
-            <a
-              href={whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`WhatsApp ${lead.contact.phone}`}
-              className="inline-flex items-center gap-1 rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-[11px] font-medium text-green-400 transition-colors hover:bg-green-500/20"
-            >
-              <MessageCircle className="h-3 w-3" />
-              WhatsApp
-            </a>
-          )}
-          <button
-            onClick={() => onArchive(lead.id, lead.hidden)}
-            className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-800"
+          <Link
+            href={`/leads/${lead.id}`}
+            className="inline-flex items-center gap-1.5 rounded-md bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-900 transition-colors hover:bg-white"
           >
-            {lead.hidden ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
-            {lead.hidden ? 'Restore' : 'Archive'}
-          </button>
-        </div>
-        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <Link href={`/leads/${lead.id}`} className="text-zinc-500 hover:text-zinc-200">
-            <ChevronRight className="h-4 w-4" />
+            Open
+            <ArrowRight className="h-3 w-3" />
           </Link>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onDelete(lead.id)}
-            className="h-8 shrink-0 px-2 text-zinc-500 hover:bg-red-500/10 hover:text-red-400"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
-export default function Dashboard() {
+function LeadsView() {
+  const params = useSearchParams();
+  const view = asView(params.get('view'));
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [platform, setPlatform] = useState<PlatformFilter>('All');
-  const [remoteOnly, setRemoteOnly] = useState(false);
-  const [recency, setRecency] = useState<RecencyFilter>('all');
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<(typeof STATUS_TABS)[number][0]>('active');
-  const [category, setCategory] = useState<string>('All');
-  const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
-  const fetchLeads = useCallback(async () => {
+  useEffect(() => {
+    const t = setTimeout(() => setQuery(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      if (platform !== 'All') params.set('platform', platform);
-      if (remoteOnly) params.set('remote', 'true');
-      if (recency !== 'all') params.set('days', recency);
-      if (search.trim()) params.set('search', search.trim());
-      if (category !== 'All') params.set('category', category);
-      params.set('status', status === 'active' ? 'all' : status);
-      const res = await fetch(`/api/leads?${params.toString()}`);
+      const qs = new URLSearchParams({ group: view, limit: '200' });
+      if (query) qs.set('search', query);
+      const res = await fetch(`/api/leads?${qs.toString()}`);
       if (!res.ok) throw new Error(`Failed to load leads (${res.status})`);
       const body = await res.json();
       if (!Array.isArray(body.leads)) throw new Error('Unexpected response');
@@ -275,290 +118,126 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [platform, remoteOnly, recency, search, status, category]);
-
-  const fetchCategories = useCallback(async () => {
-    try {
-      const res = await fetch('/api/leads/categories');
-      if (!res.ok) return;
-      const body = await res.json();
-      if (Array.isArray(body.categories)) setCategories(body.categories);
-    } catch {
-      /* non-critical */
-    }
-  }, []);
+  }, [view, query]);
 
   useEffect(() => {
-    const t = setTimeout(fetchLeads, search ? 300 : 0);
-    return () => clearTimeout(t);
-  }, [fetchLeads, search]);
+    load();
+  }, [load]);
 
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories, leads.length]);
-
-  const handleDelete = useCallback(async (id: string) => {
-    setLeads((prev) => prev.filter((l) => l.id !== id));
-    try {
-      const res = await fetch(`/api/leads?id=${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Delete failed');
-    } catch {
-      fetchLeads();
-    }
-  }, [fetchLeads]);
-
-  const patchLead = useCallback(
-    async (id: string, body: Record<string, unknown>) => {
+  const hide = useCallback(
+    async (id: string, restore: boolean) => {
+      setLeads((prev) => prev.filter((l) => l.id !== id));
       try {
         const res = await fetch('/api/leads', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, ...body }),
+          body: JSON.stringify({ id, hidden: !restore }),
         });
-        if (res.status === 409) {
-          const problem = await res.json().catch(() => ({}));
-          setError(problem.error ?? 'That status needs a contact date first');
-          return;
-        }
         if (!res.ok) throw new Error();
-        fetchCategories();
       } catch {
-        fetchLeads();
+        load();
       }
     },
-    [fetchLeads, fetchCategories]
+    [load]
   );
 
-  const handleStatus = useCallback(
-    async (id: string, nextStatus: LeadStatus) => {
-      if (nextStatus === 'do_not_contact') {
-        setLeads((prev) => prev.filter((l) => l.id !== id));
-        await patchLead(id, { status: nextStatus, hidden: true, opt_out: true });
-        return;
-      }
-      const target = leads.find((l) => l.id === id);
-      const body: Record<string, unknown> = { status: nextStatus };
-      // 'contacted' is refused without a contact date, so record it on transition.
-      if (nextStatus === 'contacted' && !target?.last_contact_at) {
-        body.last_contact_at = new Date().toISOString();
-      }
-      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status: nextStatus } : l)));
-      await patchLead(id, body);
-    },
-    [patchLead, leads]
-  );
-
-  const handleArchive = useCallback(
-    async (id: string, restore: boolean) => {
-      await patchLead(id, { hidden: !restore });
-      setLeads((prev) => prev.filter((l) => l.id !== id));
-    },
-    [patchLead]
-  );
-
-  const handleCopy = useCallback(async (lead: Lead) => {
-    const text = composeMessage(lead);
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedId(lead.id);
-      setTimeout(() => setCopiedId(null), 1500);
-    } catch {
-      /* clipboard unavailable */
-    }
-  }, []);
-
-  const stats = useMemo(
-    () => ({
-      total: leads.length,
-      priority: leads.filter((l) => l.classification === 'priority').length,
-      qualified: leads.filter((l) => ['qualified', 'ready_for_outreach'].includes(l.status)).length,
-      contacted: leads.filter((l) => l.status === 'contacted').length,
-      replied: leads.filter((l) =>
-        ['replied', 'discovery_discussion', 'proposal_or_pilot'].includes(l.status)
-      ).length,
-      won: leads.filter((l) => l.status === 'won').length,
-    }),
-    [leads]
-  );
+  const heading = useMemo(() => GROUP_LABELS[view], [view]);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <header className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/25 bg-emerald-500/15">
-              <Rocket className="h-4 w-4 text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold leading-tight text-zinc-50">ClientOutreach</p>
-              <p className="text-xs leading-tight text-zinc-500">imawais.engineer</p>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              await fetch('/api/logout', { method: 'POST' });
-              window.location.href = '/login';
-            }}
-            className="border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800 hover:text-white"
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </Button>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {STATUS_TABS.map(([value, label]) => (
-            <button
-              key={value}
-              onClick={() => setStatus(value)}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                status === value
-                  ? 'bg-white text-zinc-950'
-                  : 'border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+    <AppShell active={view}>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-zinc-50">{heading}</h1>
+          <p className="mt-0.5 text-sm text-zinc-500">
+            {loading && leads.length === 0
+              ? 'Loading…'
+              : `${leads.length} ${leads.length === 1 ? 'lead' : 'leads'}`}
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <StatCard label="Leads" value={stats.total} accent="text-white" />
-          <StatCard label="Priority" value={stats.priority} accent="text-emerald-400" />
-          <StatCard label="Qualified" value={stats.qualified} accent="text-sky-400" />
-          <StatCard label="Contacted" value={stats.contacted} accent="text-cyan-400" />
-          <StatCard label="Replied" value={stats.replied} accent="text-violet-400" />
-          <StatCard label="Won" value={stats.won} accent="text-amber-400" />
-        </div>
-
-        <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 lg:flex-row lg:items-center">
-          <div className="flex flex-wrap gap-1.5">
-            {(['All', ...categories.map((c) => c.name)] as string[]).map((c) => (
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search leads"
+              className="h-9 w-56 border-zinc-800 bg-zinc-900/60 pl-9 pr-8 text-sm text-zinc-100 placeholder:text-zinc-600 sm:w-64"
+            />
+            {search && (
               <button
-                key={c}
-                onClick={() => setCategory(c)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                  category === c
-                    ? 'bg-amber-500 text-zinc-950'
-                    : 'border border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-                }`}
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-zinc-500 hover:text-zinc-200"
+                aria-label="Clear search"
               >
-                {c}
+                <X className="h-3.5 w-3.5" />
               </button>
-            ))}
+            )}
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {PLATFORMS.map((p) => (
-              <button
-                key={p}
-                onClick={() => setPlatform(p)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                  platform === p
-                    ? 'bg-emerald-500 text-zinc-950'
-                    : 'border border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-1 flex-wrap items-center gap-3 lg:justify-end">
-            <button
-              onClick={() => setRemoteOnly(!remoteOnly)}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                remoteOnly
-                  ? 'border border-emerald-500/40 bg-emerald-500/20 text-emerald-400'
-                  : 'border border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
-              }`}
-            >
-              Remote only
-            </button>
-            <div className="flex gap-1.5">
-              {(['all', '3', '7'] as RecencyFilter[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRecency(r)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    recency === r
-                      ? 'bg-zinc-100 text-zinc-900'
-                      : 'border border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
-                  }`}
-                >
-                  {r === 'all' ? 'All time' : `Last ${r}d`}
-                </button>
-              ))}
-            </div>
-            <div className="relative w-full lg:w-64">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search business or opportunity..."
-                className="h-9 border-zinc-800 bg-zinc-950 pl-9 text-sm text-zinc-100 placeholder:text-zinc-600"
-              />
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-                Export
-              </span>
-              {(['csv', 'json', 'md'] as const).map((f) => (
+
+          <details className="relative">
+            <summary className="flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-md border border-zinc-800 px-2.5 text-xs text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-zinc-200 [&::-webkit-details-marker]:hidden">
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </summary>
+            <div className="absolute right-0 z-20 mt-1 w-36 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl">
+              {(['csv', 'json', 'md'] as const).map((format) => (
                 <a
-                  key={f}
-                  href={`/api/leads/export?format=${f}&status=${status}`}
-                  title={`Download every ${status === 'archived' ? 'archived ' : ''}lead as ${f.toUpperCase()}`}
-                  className="rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
+                  key={format}
+                  href={`/api/leads/export?format=${format}&group=${view}`}
+                  className="block px-3 py-2 text-xs text-zinc-300 hover:bg-zinc-800 hover:text-white"
                 >
-                  {f.toUpperCase()}
+                  {format.toUpperCase()}
                 </a>
               ))}
             </div>
-            <Button size="sm" variant="ghost" onClick={fetchLeads} className="text-zinc-400 hover:text-white">
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-          </div>
+          </details>
         </div>
+      </div>
 
-        {error && (
-          <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
-            <AlertTriangle className="h-4 w-4" />
-            {error}
-          </div>
-        )}
+      {error && (
+        <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </p>
+      )}
 
+      <div className="mt-5 space-y-3">
         {loading && leads.length === 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-48 rounded-xl bg-zinc-900" />
-            ))}
-          </div>
+          [...Array(4)].map((_, i) => (
+            <div key={i} className="h-40 animate-pulse rounded-xl border border-zinc-800 bg-zinc-900/40" />
+          ))
         ) : leads.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-zinc-800 py-16 text-center">
-            <Inbox className="h-10 w-10 text-zinc-700" />
-            <p className="text-sm font-medium text-zinc-400">No leads yet</p>
-            <p className="text-xs text-zinc-600">
-              Run the pipeline, or POST a validated lead to /api/leads
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-zinc-800 py-16 text-center">
+            <Inbox className="h-8 w-8 text-zinc-700" />
+            <p className="text-sm text-zinc-400">
+              {query ? 'No leads match that search.' : `No leads in ${heading}.`}
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {leads.map((lead) => (
-              <LeadCard
-                key={lead.id}
-                lead={lead}
-                onDelete={handleDelete}
-                onStatus={handleStatus}
-                onCopy={handleCopy}
-                onArchive={handleArchive}
-                copied={copiedId === lead.id}
-              />
-            ))}
-          </div>
+          leads.map((lead) => (
+            <LeadCard
+              key={lead.id}
+              lead={lead}
+              archived={view === 'archived'}
+              onHide={hide}
+            />
+          ))
         )}
-      </main>
-    </div>
+      </div>
+    </AppShell>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-sm text-zinc-500">
+          Loading…
+        </div>
+      }
+    >
+      <LeadsView />
+    </Suspense>
   );
 }

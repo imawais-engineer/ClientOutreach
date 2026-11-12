@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
 import { query, ensureLeadsTableOnce } from '@/lib/db';
 import { checkApiSecret, requireAuthOrSecret } from '@/lib/auth';
-import { LIFECYCLE, type Lead, type LeadContact, type LeadDetails, type LeadStatus } from '@/lib/leads';
+import {
+  LIFECYCLE,
+  STATUS_GROUPS,
+  type Lead,
+  type LeadContact,
+  type LeadDetails,
+  type LeadStatus,
+} from '@/lib/leads';
 
 export const dynamic = 'force-dynamic';
 
@@ -309,6 +316,7 @@ export async function GET(req: Request) {
   const search = url.searchParams.get('search');
   const category = url.searchParams.get('category');
   const statusParam = url.searchParams.get('status');
+  const groupParam = url.searchParams.get('group');
   const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get('limit') ?? '60', 10) || 60));
   const offset = Math.max(0, parseInt(url.searchParams.get('offset') ?? '0', 10) || 0);
 
@@ -316,7 +324,7 @@ export async function GET(req: Request) {
     await ensureLeadsTableOnce();
 
     // 'archived' is a view of hidden rows, not a lifecycle status.
-    const archivedView = statusParam === 'archived';
+    const archivedView = statusParam === 'archived' || groupParam === 'archived';
     const conditions: string[] = [archivedView ? 'hidden = true' : 'hidden = false'];
     const values: unknown[] = [];
     const add = (clause: string, ...vals: unknown[]) => {
@@ -330,6 +338,13 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: 'invalid status filter' }, { status: 400 });
       }
       add('status = ?', statusParam);
+    }
+    if (groupParam && groupParam !== 'all' && groupParam !== 'archived') {
+      const statuses = (STATUS_GROUPS as Record<string, readonly string[]>)[groupParam];
+      if (!statuses) {
+        return NextResponse.json({ error: 'invalid group filter' }, { status: 400 });
+      }
+      add(`status IN (${statuses.map(() => '?').join(',')})`, ...statuses);
     }
     if (category && category !== 'All') add('category = ?', category);
     if (platform && platform !== 'All') add('platform = ?', platform);

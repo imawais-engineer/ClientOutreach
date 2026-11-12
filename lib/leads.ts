@@ -152,15 +152,101 @@ export const OUTREACH_TEMPLATE = (lead: {
     lead.case_study || 'a similar automation'
   } - 90 sec Loom for you? - imawais.engineer/projects`;
 
-/** The one paragraph used for copy-to-clipboard and as the WhatsApp prefill. */
+/** Scraped business names carry long `A - B - C` tails; keep the recognisable head. */
+export const shortBusiness = (business: string, max = 60): string => {
+  const head = business.split(/\s+[-–|]\s+/)[0].trim();
+  const base = head.length >= 3 ? head : business.trim();
+  return base.length > max ? `${base.slice(0, max - 1).trimEnd()}…` : base;
+};
+
+/**
+ * What the business actually does. The pipeline stores the business description
+ * in the tail of `why_suits` (after "Evidence:"), so prefer that and fall back
+ * to the opportunity text rather than inventing a summary.
+ */
+export const businessDescription = (lead: {
+  why_suits?: string | null;
+  need: string;
+}): string => {
+  const why = (lead.why_suits ?? '').trim();
+  const [, evidence] = why.split(/Evidence:/i);
+  if (evidence && evidence.trim()) return evidence.trim();
+  return why || lead.need;
+};
+
+/** Skill labels offered only when the lead's own text points at them. */
+const SKILL_RULES: Array<[RegExp, string]> = [
+  [/whatsapp/i, 'WhatsApp Automation'],
+  [/n8n|make\.com|zapier|workflow/i, 'n8n Workflow Automation'],
+  [/ai agent|agentic|llm|gpt|openai|assistant/i, 'AI Agents'],
+  [/crm|hubspot|salesforce|pipedrive|crm sync/i, 'CRM Integration'],
+  [/lead gen|outbound|prospect|enrich|qualif/i, 'Lead Generation & Qualification'],
+  [/api|webhook|integration/i, 'API Integrations'],
+  [/web app|website|frontend|e-?commerce|store|shopify/i, 'Web Development'],
+  [/email marketing|newsletter|campaign/i, 'Email Automation'],
+  [/automation/i, 'AI Automation'],
+];
+
+export const skillsForLead = (
+  lead: {
+    need?: string | null;
+    why_suits?: string | null;
+    relevant_service?: string | null;
+    pitch_angle?: string | null;
+  },
+  max = 4
+): string[] => {
+  const text = [lead.relevant_service, lead.why_suits, lead.need, lead.pitch_angle]
+    .filter(Boolean)
+    .join(' ');
+  if (!text.trim()) return [];
+  const hits: string[] = [];
+  for (const [re, label] of SKILL_RULES) {
+    if (re.test(text) && !hits.includes(label)) hits.push(label);
+    if (hits.length >= max) break;
+  }
+  return hits;
+};
+
+/** The readable message used for copy-to-clipboard and as the WhatsApp prefill. */
 export const composeMessage = (lead: {
+  business?: string;
   need: string;
   pitch_angle?: string | null;
   why_suits?: string | null;
   case_study?: string | null;
 }): string => {
-  const opening = lead.pitch_angle ?? lead.why_suits ?? lead.need;
-  return lead.case_study ? `${opening}\n\nProof: ${lead.case_study}` : opening;
+  const biz = lead.business ? shortBusiness(lead.business, 40) : 'there';
+  const need = lead.need.replace(/\s+/g, ' ').trim().replace(/\.$/, '');
+  const lines = [
+    `Hi ${biz} team — I took a look at your business and noticed one thing I could help with: ${need}.`,
+  ];
+  const pitch = lead.pitch_angle?.trim();
+  if (pitch) lines.push(pitch);
+  if (lead.case_study) lines.push(`I've built something very close to this: ${lead.case_study}`);
+  lines.push('Happy to send a 90-second walkthrough if that is useful.');
+  lines.push('— Imawais · imawais.engineer');
+  return lines.join('\n\n');
+};
+
+/** Sidebar workflow views. Archived is a hidden-row view, not a lifecycle status. */
+export const STATUS_GROUPS = {
+  active: ['discovered', 'researching', 'nurture'],
+  qualified: ['qualified', 'ready_for_outreach'],
+  contacted: ['contacted'],
+  replied: ['replied', 'discovery_discussion', 'proposal_or_pilot'],
+  won: ['won'],
+} as const satisfies Record<string, readonly LeadStatus[]>;
+
+export type StatusGroup = keyof typeof STATUS_GROUPS | 'archived';
+
+export const GROUP_LABELS: Record<StatusGroup, string> = {
+  active: 'Active Leads',
+  qualified: 'Qualified Leads',
+  contacted: 'Contacted Leads',
+  replied: 'Replied',
+  won: 'Won',
+  archived: 'Archived',
 };
 
 // Dial codes cover the markets the pipeline targets. Only used to turn a

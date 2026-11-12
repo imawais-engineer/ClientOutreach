@@ -3,6 +3,7 @@ import { query, ensureLeadsTableOnce } from '@/lib/db';
 import { requireAuthOrSecret } from '@/lib/auth';
 import {
   LIFECYCLE,
+  STATUS_GROUPS,
   STATUS_LABELS,
   composeMessage,
   whatsappLink,
@@ -195,6 +196,7 @@ export async function GET(req: Request) {
   }
 
   const status = url.searchParams.get('status');
+  const group = url.searchParams.get('group');
   const include = url.searchParams.get('include');
 
   try {
@@ -203,7 +205,7 @@ export async function GET(req: Request) {
     const conditions: string[] = [];
     const values: unknown[] = [];
 
-    if (status === 'archived') {
+    if (status === 'archived' || group === 'archived') {
       conditions.push('hidden = true');
     } else if (include === 'all') {
       // no visibility filter
@@ -219,6 +221,18 @@ export async function GET(req: Request) {
       conditions.push(`status = $${values.length}`);
     }
 
+    if (group && group !== 'all' && group !== 'archived') {
+      const statuses = (STATUS_GROUPS as Record<string, readonly string[]>)[group];
+      if (!statuses) {
+        return NextResponse.json({ error: 'invalid group filter' }, { status: 400 });
+      }
+      const placeholders = statuses.map((s) => {
+        values.push(s);
+        return `$${values.length}`;
+      });
+      conditions.push(`status IN (${placeholders.join(',')})`);
+    }
+
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const rows = await query<Row>(
       `SELECT * FROM leads ${where}
@@ -226,7 +240,11 @@ export async function GET(req: Request) {
       values
     );
 
-    const meta = { status_filter: status ?? 'all', includes_archived: status === 'archived' || include === 'all' };
+    const meta = {
+      status_filter: status ?? 'all',
+      group_filter: group ?? null,
+      includes_archived: status === 'archived' || group === 'archived' || include === 'all',
+    };
 
     let body: string;
     let contentType: string;
