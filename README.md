@@ -150,3 +150,15 @@ new --(you DM / email)--> contacted --(you apply)--> applied
  +--------(Hide button)--------> hidden (archived, out of the way)
 ```
 Hidden leads are archived, never shown on the default dashboard, and excluded from category counts - this keeps room for new jobs at the top.
+
+## Job discovery engine
+
+The Python package in [`job_discovery/`](job_discovery/README.md) is the backend that discovers job posts and pushes them here. It is config-driven: `job_discovery/profiles/finance_gcc.json` is one example profile, not a hardcoded niche.
+
+```bash
+cd job_discovery
+python3 -m pip install -e ".[dev]"
+python3 -m job_discovery run --profile finance_gcc --dry-run
+```
+
+A dry run uses fixture responses and prints normalized, qualified jobs plus the `POST /api/leads` bodies. Live runs export the variables in `.env.example` and add `--push` to send `x-api-secret`. Each job's `business_key` is the slug of its `job_uid`, `platform` is `Job Boards`, and `contact.post_url` is the listing URL. Source table and pipeline diagram: [`job_discovery/docs/PIPELINE.md`](job_discovery/docs/PIPELINE.md).
