@@ -1,4 +1,4 @@
-# Job discovery pipeline
+# Job Discovery System
 
 Ported from the n8n workflows W1 (fetch), W2 (detail), and W3 (qualify and score). W4 and W5 are optional stages. Storage is `POST /api/leads` on this dashboard, not the original Google Sheet or the old JobPool app.
 

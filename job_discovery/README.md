@@ -1,4 +1,4 @@
-# Job discovery engine
+# Job Discovery System
 
 Python port of the n8n job-discovery workflows. It fetches listings, normalizes them to one schema, drops stale and off-geography rows, qualifies and scores what remains, and can push each job to the dashboard with `POST /api/leads`.
 
