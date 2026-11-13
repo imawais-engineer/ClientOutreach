@@ -13,7 +13,7 @@ import {
   type Lead,
   type StatusGroup,
 } from '@/lib/leads';
-import { Search, Download, Inbox, ArrowRight, X, Mail, MessageCircle } from 'lucide-react';
+import { Search, Download, Inbox, ArrowRight, X, Mail, MessageCircle, Briefcase } from 'lucide-react';
 
 type Channel = 'all' | 'email' | 'whatsapp';
 
@@ -21,6 +21,21 @@ const CHANNELS: Array<{ key: Channel; label: string; icon: React.ElementType | n
   { key: 'all', label: 'All channels', icon: null },
   { key: 'email', label: 'Email ready', icon: Mail },
   { key: 'whatsapp', label: 'WhatsApp ready', icon: MessageCircle },
+];
+
+type Source = 'all' | string;
+
+const SOURCES: Array<{ key: Source; label: string; icon: React.ElementType | null }> = [
+  { key: 'all', label: 'All sources', icon: null },
+  { key: 'google_maps', label: 'Google Maps', icon: null },
+  { key: 'job_boards', label: 'Job Boards', icon: Briefcase },
+  { key: 'social', label: 'Social', icon: null },
+  { key: 'freelance', label: 'Freelance', icon: null },
+  { key: 'referrals', label: 'Referrals', icon: null },
+  { key: 'websites', label: 'Websites', icon: null },
+  { key: 'directories', label: 'Directories', icon: null },
+  { key: 'startups', label: 'Startups', icon: null },
+  { key: 'competitors', label: 'Competitors', icon: null },
 ];
 
 const VIEWS: StatusGroup[] = ['active', 'qualified', 'contacted', 'replied', 'won', 'archived'];
@@ -105,6 +120,7 @@ function LeadsView() {
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [channel, setChannel] = useState<Channel>('all');
+  const [source, setSource] = useState<Source>('all');
 
   useEffect(() => {
     const t = setTimeout(() => setQuery(search.trim()), 300);
@@ -118,6 +134,7 @@ function LeadsView() {
       const qs = new URLSearchParams({ group: view, limit: '200' });
       if (query) qs.set('search', query);
       if (channel !== 'all') qs.set('channel', channel);
+      if (source !== 'all') qs.set('source', source);
       const res = await fetch(`/api/leads?${qs.toString()}`);
       if (!res.ok) throw new Error(`Failed to load leads (${res.status})`);
       const body = await res.json();
@@ -128,7 +145,7 @@ function LeadsView() {
     } finally {
       setLoading(false);
     }
-  }, [view, query, channel]);
+  }, [view, query, channel, source]);
 
   useEffect(() => {
     load();
@@ -212,6 +229,25 @@ function LeadsView() {
             onClick={() => setChannel(key)}
             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors ${
               channel === key
+                ? 'border-zinc-600 bg-zinc-800 font-medium text-zinc-100'
+                : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+            }`}
+          >
+            {Icon && <Icon className="h-3.5 w-3.5" />}
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-zinc-800/60 pt-2.5">
+        <span className="mr-1 text-[11px] uppercase tracking-wide text-zinc-600">Source</span>
+        {SOURCES.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setSource(key)}
+            aria-pressed={source === key}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+              source === key
                 ? 'border-zinc-600 bg-zinc-800 font-medium text-zinc-100'
                 : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
             }`}
