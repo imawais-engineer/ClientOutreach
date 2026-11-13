@@ -1,0 +1,28 @@
+{
+  "jobs": [
+    {
+      "jobId": "ng-1",
+      "designation": "Finance Manager",
+      "location": "Riyadh, Saudi Arabia",
+      "jobInfo": "<p>We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.</p>",
+      "company": {
+        "name": "Example Retail Co",
+        "url": "example-retail"
+      },
+      "latestPostedDate": "{{RECENT_EPOCH}}",
+      "jdURL": "finance-manager-ng-1"
+    },
+    {
+      "jobId": "ng-old",
+      "designation": "Finance Manager",
+      "location": "Riyadh, Saudi Arabia",
+      "jobInfo": "<p>We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.</p>",
+      "company": {
+        "name": "Old Co",
+        "url": "old-co"
+      },
+      "latestPostedDate": "{{STALE_EPOCH}}",
+      "jdURL": "finance-manager-ng-old"
+    }
+  ]
+}

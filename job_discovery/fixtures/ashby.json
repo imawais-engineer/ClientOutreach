@@ -1,0 +1,22 @@
+{
+  "jobs": [
+    {
+      "id": "ash-1",
+      "title": "Finance Manager",
+      "location": "Riyadh, Saudi Arabia",
+      "descriptionPlain": "We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.",
+      "publishedAt": "{{RECENT_ISO}}",
+      "applyUrl": "https://jobs.ashbyhq.com/example-company/ash-1/apply",
+      "jobUrl": "https://jobs.ashbyhq.com/example-company/ash-1"
+    },
+    {
+      "id": "ash-old",
+      "title": "FP&A Manager",
+      "location": "Abu Dhabi, United Arab Emirates",
+      "descriptionPlain": "We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.",
+      "publishedAt": "{{STALE_ISO}}",
+      "applyUrl": "https://jobs.ashbyhq.com/example-company/ash-old/apply",
+      "jobUrl": "https://jobs.ashbyhq.com/example-company/ash-old"
+    }
+  ]
+}

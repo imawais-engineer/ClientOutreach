@@ -1,0 +1,51 @@
+{
+  "hits": {
+    "hits": [
+      {
+        "_id": "wn-1",
+        "_source": {
+          "external_id": "wn-1",
+          "title": "Finance Manager",
+          "company": "Example Nomads",
+          "locations": [
+            "Remote"
+          ],
+          "description": "<p>We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.</p>",
+          "pub_date": "{{RECENT_ISO}}",
+          "apply_url": "https://www.workingnomads.com/jobs/wn-1",
+          "expired": false
+        }
+      },
+      {
+        "_id": "wn-dead",
+        "_source": {
+          "external_id": "wn-dead",
+          "title": "Finance Manager",
+          "company": "Closed Nomads",
+          "locations": [
+            "Remote"
+          ],
+          "description": "<p>We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.</p>",
+          "pub_date": "{{RECENT_ISO}}",
+          "apply_url": "https://www.workingnomads.com/jobs/wn-dead",
+          "expired": true
+        }
+      },
+      {
+        "_id": "wn-old",
+        "_source": {
+          "external_id": "wn-old",
+          "title": "FP&A Manager",
+          "company": "Old Nomads",
+          "locations": [
+            "Remote"
+          ],
+          "description": "<p>We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.</p>",
+          "pub_date": "{{STALE_ISO}}",
+          "apply_url": "https://www.workingnomads.com/jobs/wn-old",
+          "expired": false
+        }
+      }
+    ]
+  }
+}

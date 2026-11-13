@@ -1,0 +1,50 @@
+[
+  {
+    "id": "ind-1",
+    "title": {
+      "text": "Finance Manager"
+    },
+    "location": {
+      "formatted": "Riyadh, Saudi Arabia"
+    },
+    "description": {
+      "text": "We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia."
+    },
+    "company": {
+      "name": "Example Indeed Co",
+      "urls": {
+        "indeed": "https://www.indeed.com/cmp/example"
+      }
+    },
+    "dates": {
+      "posted": "{{RECENT_ISO}}"
+    },
+    "urls": {
+      "apply": "https://www.indeed.com/viewjob?jk=ind-1"
+    }
+  },
+  {
+    "id": "ind-old",
+    "title": {
+      "text": "Finance Manager"
+    },
+    "location": {
+      "formatted": "Dubai, United Arab Emirates"
+    },
+    "description": {
+      "text": "We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia."
+    },
+    "company": {
+      "name": "Old Indeed Co",
+      "urls": {
+        "indeed": "https://www.indeed.com/cmp/old"
+      }
+    },
+    "dates": {
+      "posted": "{{STALE_ISO}}"
+    },
+    "urls": {
+      "apply": "https://www.indeed.com/viewjob?jk=ind-old"
+    }
+  }
+]

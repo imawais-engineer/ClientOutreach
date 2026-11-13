@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "external_id": "fh-1",
+      "title": "Finance Manager",
+      "location": "Remote",
+      "description": "<p>We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.</p>",
+      "company": "Example Remote Co",
+      "posted_at": "{{RECENT_ISO}}",
+      "url": "https://freehire.me/jobs/fh-1"
+    },
+    {
+      "external_id": "fh-old",
+      "title": "FP&A Manager",
+      "location": "Dubai, United Arab Emirates",
+      "description": "<p>We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.</p>",
+      "company": "Old Remote Co",
+      "posted_at": "{{STALE_ISO}}",
+      "url": "https://freehire.me/jobs/fh-old"
+    }
+  ]
+}

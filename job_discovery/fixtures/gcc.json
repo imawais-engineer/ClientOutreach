@@ -1,0 +1,18 @@
+[
+  {
+    "title": "Finance Manager",
+    "company": "Example Gulf Co",
+    "location": "Riyadh, Saudi Arabia",
+    "description": "We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.",
+    "link": "https://www.bayt.com/en/saudi-arabia/jobs/finance-manager-88001",
+    "postedDate": "{{RECENT_ISO}}"
+  },
+  {
+    "title": "Finance Manager",
+    "company": "Old Gulf Co",
+    "location": "Dubai, United Arab Emirates",
+    "description": "We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.",
+    "link": "https://www.gulftalent.com/jobs/finance-manager-88002",
+    "postedDate": "{{STALE_ISO}}"
+  }
+]

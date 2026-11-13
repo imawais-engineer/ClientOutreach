@@ -1,0 +1,37 @@
+{
+  "jobs": [
+    {
+      "id": 501,
+      "title": "Finance Manager",
+      "absolute_url": "https://boards.greenhouse.io/example-board/jobs/501",
+      "location": {
+        "name": "Riyadh, Saudi Arabia"
+      },
+      "content": "<p>We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.</p>",
+      "first_published": "{{RECENT_ISO}}T08:00:00Z",
+      "company_name": "Example Retail Co"
+    },
+    {
+      "id": 502,
+      "title": "Junior Finance Assistant",
+      "absolute_url": "https://boards.greenhouse.io/example-board/jobs/502",
+      "location": {
+        "name": "Riyadh, Saudi Arabia"
+      },
+      "content": "<p>Junior Finance Assistant supporting invoice processing in Riyadh, Saudi Arabia. This is an entry-level administrative role with no team leadership and no forecasting ownership.</p>",
+      "first_published": "{{RECENT_ISO}}T08:00:00Z",
+      "company_name": "Example Retail Co"
+    },
+    {
+      "id": 503,
+      "title": "Finance Manager",
+      "absolute_url": "https://boards.greenhouse.io/example-board/jobs/503",
+      "location": {
+        "name": "Jeddah, Saudi Arabia"
+      },
+      "content": "<p>We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.</p>",
+      "first_published": "{{STALE_ISO}}T08:00:00Z",
+      "company_name": "Example Retail Co"
+    }
+  ]
+}

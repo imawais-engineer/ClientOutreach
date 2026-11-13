@@ -1,0 +1,171 @@
+{
+  "id": "finance_gcc",
+  "display_name": "Example Finance Professional",
+  "category": "Finance",
+  "relevant_service": "Finance leadership search",
+  "remote_eligible_pak": true,
+  "max_job_age_days": 7,
+  "require_published_date": true,
+  "page_size": 25,
+  "min_valid_description": 80,
+  "notifications": {"min_priority": "High"},
+  "candidate": {
+    "credentials": ["CMA", "ACCA"],
+    "years_experience": 15,
+    "regional_years": 12,
+    "languages": ["English", "Urdu"],
+    "citizenship_note": "Example profile based in Saudi Arabia with GCC work eligibility. Replace this note for a real search.",
+    "other_role_score": 50,
+    "non_role_score": 20,
+    "core_skills": [
+      "FP&A",
+      "Budgeting",
+      "Forecasting",
+      "Financial Planning",
+      "Financial Analysis",
+      "Management Reporting",
+      "Variance Analysis",
+      "P&L",
+      "Balance Sheet",
+      "Cash Flow",
+      "KPI",
+      "Dashboards",
+      "Power BI",
+      "Excel",
+      "Financial Modeling",
+      "Scenario Analysis",
+      "Business Partnering",
+      "Process Improvement"
+    ],
+    "preferred_industries": ["retail", "fmcg", "food & beverage", "restaurant", "qsr", "automotive", "mobility", "car rental", "consumer"],
+    "secondary_industries": ["manufacturing", "distribution", "logistics", "supply chain", "hospitality", "real estate", "construction", "professional services", "consulting", "technology", "e-commerce"],
+    "adjacent_industries": ["banking", "insurance", "audit"],
+    "role_terms": ["finance", "fp&a", "financial", "accounting"],
+    "leadership_terms": ["manager", "head", "director", "controller", "lead", "partner", "cfo", "chief"],
+    "exclude_title_terms": ["intern", "junior", "entry-level", "entry level", "assistant", "cashier", "trainee", "unpaid"],
+    "hard_block_phrases": [
+      "security clearance",
+      "native arabic",
+      "arabic native speaker",
+      "saudi nationals only",
+      "only saudi nationals",
+      "emirati nationals only",
+      "gcc nationals only",
+      "citizens only"
+    ],
+    "remote_restriction_phrases": [
+      "united states only",
+      "us only",
+      "uk only",
+      "united kingdom only",
+      "must be based in the united states",
+      "must be located in the united states"
+    ],
+    "gap_watch": ["french fluent", "oracle cloud erp"],
+    "title_bands": [
+      {"score": 100, "titles": ["Finance Manager", "Senior Finance Manager", "Financial Controller", "Finance Controller", "FP&A Manager", "Financial Planning & Analysis Manager", "Head of Finance", "Finance Director"]},
+      {"score": 85, "titles": ["Senior FP&A Manager", "Group Finance Manager", "Group Financial Controller", "Commercial Finance Manager", "Business Finance Manager", "Finance Business Partner", "Senior Finance Business Partner", "Planning & Reporting Manager", "Budgeting & Forecasting Manager", "Management Reporting Manager", "Corporate Finance Manager", "Head of FP&A", "FP&A Lead"]},
+      {"score": 70, "titles": ["CFO", "Chief Financial Officer", "Deputy CFO", "Finance Lead", "Senior Financial Analyst", "Senior FP&A Analyst", "Financial Planning Analyst", "Financial Analyst", "Finance Consultant"]}
+    ]
+  },
+  "location_policy": {
+    "primary_places": ["saudi arabia", "kingdom of saudi arabia", "saudi", "ksa", "riyadh", "jeddah", "dammam", "khobar", "al khobar", "dhahran", "السعودية", "الرياض", "جدة"],
+    "secondary_places": ["united arab emirates", "uae", "emirates", "dubai", "abu dhabi", "sharjah", "qatar", "doha", "kuwait", "bahrain", "manama", "oman", "muscat", "الإمارات", "دبي", "قطر", "الكويت", "البحرين", "عمان"],
+    "places": [
+      "saudi arabia", "kingdom of saudi arabia", "saudi", "ksa", "riyadh", "jeddah", "dammam", "khobar", "al khobar", "dhahran", "makkah", "mecca", "madinah", "medina",
+      "united arab emirates", "uae", "emirates", "dubai", "abu dhabi", "sharjah", "ajman", "fujairah", "ras al khaimah", "umm al quwain",
+      "qatar", "doha", "kuwait", "kuwait city", "bahrain", "manama", "oman", "muscat", "salalah",
+      "السعودية", "المملكة العربية السعودية", "الإمارات", "الامارات", "الإمارات العربية المتحدة", "قطر", "الكويت", "البحرين", "عمان",
+      "الرياض", "جدة", "الدمام", "الخبر", "دبي", "أبوظبي", "الدوحة", "المنامة", "مسقط"
+    ],
+    "remote_markers": ["remote", "remote job", "remote jobs", "worldwide", "work from anywhere", "anywhere", "global remote", "remote worldwide", "work from home", "wfh"]
+  },
+  "scoring": {
+    "divisor": 110,
+    "weights": {
+      "title_role": 25,
+      "seniority": 10,
+      "skills": 15,
+      "experience": 10,
+      "qualifications": 10,
+      "industry": 10,
+      "location": 15,
+      "remote_work_arrangement": 10,
+      "compensation": 5
+    }
+  },
+  "searches": [
+    {
+      "keyword": "Finance Manager",
+      "location": "Riyadh",
+      "country": "Saudi Arabia",
+      "country_code": "SA",
+      "currency_code": "SAR",
+      "filter_keywords": ["finance", "fp&a", "financial", "controller"],
+      "exclude_keywords": ["intern", "unpaid"],
+      "title_match_keywords": ["Finance Manager", "FP&A Manager", "Financial Controller"]
+    },
+    {
+      "keyword": "FP&A Manager",
+      "location": "Dubai",
+      "country": "United Arab Emirates",
+      "country_code": "AE",
+      "currency_code": "AED",
+      "filter_keywords": ["finance", "fp&a", "financial", "controller"],
+      "exclude_keywords": ["intern", "unpaid"],
+      "title_match_keywords": ["FP&A Manager", "Finance Manager"]
+    }
+  ],
+  "sources": {
+    "linkedin": {"enabled": true},
+    "naukrigulf": {"enabled": true},
+    "efinancialcareers": {"enabled": true},
+    "freehire": {"enabled": true, "countries": "SA,AE,QA,KW,BH,OM", "work_mode": "remote,hybrid,onsite", "limit": 100},
+    "greenhouse": {"enabled": true, "boards": [{"token": "example-board", "company": "Example Retail Co"}]},
+    "jooble": {"enabled": true, "radius": 40, "country_name": "Saudi Arabia"},
+    "workingnomads": {"enabled": true},
+    "weworkremotely": {"enabled": true},
+    "ashby": {"enabled": true, "companies": [{"slug": "example-company", "company": "Example Payments Co"}]},
+    "indeed": {"enabled": true, "actor_id": "BIeK7ZcYUrdxDgOEQ", "from_days": "7", "max_items": 50, "radius": "40"},
+    "upwork": {
+      "enabled": true,
+      "actor_id": "QRHJxnLxIAxpfHCcu",
+      "category": "531770282584862721",
+      "limit": 30,
+      "queries": ["Financial Controller", "Finance Manager", "FP&A Manager", "Financial Planning and Analysis"]
+    },
+    "gcc": {
+      "enabled": true,
+      "actor_id": "T1LDITQDDdL824BJg",
+      "city": "Riyadh",
+      "country": "saudi-arabia",
+      "job_function": "Finance",
+      "keywords": ["Finance Manager", "FP&A Manager", "Finance"],
+      "board_sources": ["bayt", "gulftalent", "foundit", "tanqeeb"],
+      "max_jobs_per_source": 50,
+      "date_posted_within_days": 0
+    },
+    "michaelpage": {"enabled": true, "keyword": "finance", "location": "Riyadh", "base_url": "https://www.michaelpage.ae/jobs"}
+  },
+  "resume": {
+    "summary": "CMA and ACCA qualified finance professional with 15 years in FP&A, management reporting, budgeting, and forecasting, including 12 years in the GCC across retail and consumer businesses.",
+    "competencies": "FP&A\nBudgeting and forecasting\nManagement reporting\nVariance analysis\nP&L, balance sheet, and cash flow\nKPI dashboards\nPower BI and Excel\nBusiness partnering",
+    "impacts": "Reduced group reporting cycle time by 4 weeks through spreadsheet models and standardized packs\nCut regional reporting lag by more than 10 days with shared templates and dashboards\nBuilt driver-based budgets, forecasts, and scenarios used by operations leaders",
+    "experience": "Manager, Planning and Reporting, regional retail group, Saudi Arabia. Led FP&A, budgets, forecasts, and investment reviews using NPV, IRR, and payback.",
+    "technical_skills": "Excel, Power BI, DAX, VBA, Python, SAP, PowerPoint",
+    "education": "CMA. ACCA. Bachelor of Commerce."
+  },
+  "recruiter": {
+    "remote_allowed": true,
+    "onsite_countries": ["saudi arabia", "uae", "qatar", "kuwait", "bahrain", "oman", "egypt", "jordan", "pakistan", "malaysia", "indonesia", "turkey"],
+    "geo_keywords": ["gulf", "mena", "gcc"],
+    "places": ["finance", "FP&A", "management reporting"],
+    "priority_contacts": ["recruiter", "talent acquisition", "hiring manager"],
+    "max_searches_per_job": 8,
+    "pass_threshold": 40,
+    "max_recruiters_per_job": 5,
+    "min_match_score": 70,
+    "followup_days": [5, 12],
+    "hitl_required_before_outreach": true
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "jobs": [
+    {
+      "id": "jb-1",
+      "title": "Finance Manager",
+      "location": "Riyadh, Saudi Arabia",
+      "snippet": "<p>We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.</p>",
+      "company": "Example Jooble Co",
+      "updated": "{{RECENT_ISO}}",
+      "link": "https://jooble.org/jobs/jb-1",
+      "source": "example"
+    },
+    {
+      "id": "jb-old",
+      "title": "Financial Controller",
+      "location": "Doha, Qatar",
+      "snippet": "<p>We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.</p>",
+      "company": "Old Jooble Co",
+      "updated": "{{STALE_ISO}}",
+      "link": "https://jooble.org/jobs/jb-old",
+      "source": "example"
+    }
+  ]
+}

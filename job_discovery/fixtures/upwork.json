@@ -1,0 +1,15 @@
+[
+  {
+    "upwork_job_id": "up-1",
+    "title": "Finance Manager",
+    "link": "https://www.upwork.com/jobs/~up-1",
+    "data": {
+      "description": "We are hiring a Finance Manager for a retail group. The role owns FP&A, budgeting, forecasting, management reporting, variance analysis and P&L. 10 years of experience. On-site in Riyadh, Saudi Arabia.",
+      "jobTile": {
+        "job": {
+          "publishTime": "{{RECENT_ISO}}"
+        }
+      }
+    }
+  }
+]
